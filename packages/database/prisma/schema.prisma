@@ -1,0 +1,428 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── ENUMS ───────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  SUPER_ADMIN
+  TENANT_ADMIN
+  TENANT_OPERATOR
+  TENANT_VIEWER
+}
+
+// ─── AUTH ─────────────────────────────────────────────────────────────────────
+
+model User {
+  id                   String    @id @default(uuid())
+  email                String    @unique
+  passwordHash         String
+  name                 String?
+  role                 UserRole  @default(TENANT_OPERATOR)
+  tenantId             String?
+  isEmailVerified      Boolean   @default(false)
+  twoFactorEnabled     Boolean   @default(false)
+  twoFactorSecret      String?   // TOTP secret (cifrado AES-256)
+  twoFactorBackupCodes String[]  // backup codes hasheados
+  avatarUrl            String?
+  lastLoginAt          DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  tenant               Tenant?          @relation(fields: [tenantId], references: [id])
+  refreshTokens        RefreshToken[]
+  emailVerifications   EmailVerification[]
+  passwordResets       PasswordReset[]
+
+  @@index([email])
+  @@index([tenantId])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  tokenHash String   @unique // bcrypt hash del token real
+  expiresAt DateTime
+  revokedAt DateTime?
+  userAgent String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model EmailVerification {
+  id        String   @id @default(uuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("email_verifications")
+}
+
+model PasswordReset {
+  id        String   @id @default(uuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("password_resets")
+}
+
+enum Plan {
+  STARTER
+  GROWTH
+  ENTERPRISE
+}
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum TemplateStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum FlowStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  RUNNING
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum DispatchStatus {
+  PENDING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+  FAILED_PERMANENT
+}
+
+enum ConversationStatus {
+  OPEN
+  CLOSED
+}
+
+enum Direction {
+  INBOUND
+  OUTBOUND
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  DOCUMENT
+  TEMPLATE
+  INTERACTIVE
+}
+
+enum MessageStatus {
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+enum ExecutionStatus {
+  RUNNING
+  WAITING
+  COMPLETED
+  FAILED
+}
+
+// ─── TENANT ──────────────────────────────────────────────────────────────────
+
+model Tenant {
+  id        String       @id @default(uuid())
+  name      String
+  slug      String       @unique
+  plan      Plan         @default(STARTER)
+  status    TenantStatus @default(ACTIVE)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  channels      TenantChannel[]
+  templates     Template[]
+  flows         Flow[]
+  campaigns     Campaign[]
+  users         User[]
+  contactLists  ContactList[]
+  contacts      Contact[]
+  conversations Conversation[]
+
+  @@index([slug])
+  @@map("tenants")
+}
+
+model TenantChannel {
+  id              String   @id @default(uuid())
+  tenantId        String
+  provider        String   @default("bird")
+  birdWorkspaceId String   // AES-256-GCM encrypted
+  birdApiKey      String   // AES-256-GCM encrypted
+  birdChannelId   String
+  wabPhoneNumber  String
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("tenant_channels")
+}
+
+// ─── TEMPLATES ───────────────────────────────────────────────────────────────
+
+model Template {
+  id             String         @id @default(uuid())
+  tenantId       String
+  name           String
+  birdTemplateId String?
+  status         TemplateStatus @default(PENDING)
+  category       String         // MARKETING | UTILITY | AUTHENTICATION
+  language       String         @default("es")
+  components     Json           // header, body, footer, buttons
+  variables      Json           @default("[]")
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  tenant    Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  flows     FlowTemplate[]
+  campaigns Campaign[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("templates")
+}
+
+// ─── FLOWS ───────────────────────────────────────────────────────────────────
+
+model Flow {
+  id          String     @id @default(uuid())
+  tenantId    String
+  name        String
+  description String?
+  status      FlowStatus @default(DRAFT)
+  nodes       Json       @default("[]")
+  edges       Json       @default("[]")
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  tenant     Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  templates  FlowTemplate[]
+  campaigns  Campaign[]
+  executions FlowExecution[]
+
+  @@index([tenantId])
+  @@map("flows")
+}
+
+model FlowTemplate {
+  flowId     String
+  templateId String
+
+  flow     Flow     @relation(fields: [flowId], references: [id], onDelete: Cascade)
+  template Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@id([flowId, templateId])
+  @@map("flow_templates")
+}
+
+// ─── CONTACTS ────────────────────────────────────────────────────────────────
+
+model ContactList {
+  id        String   @id @default(uuid())
+  tenantId  String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  contacts  ContactListItem[]
+  campaigns Campaign[]
+  tenant    Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("contact_lists")
+}
+
+model Contact {
+  id        String   @id @default(uuid())
+  tenantId  String
+  phone     String   // E.164: +521234567890
+  name      String?
+  metadata  Json?
+  optedOut  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lists         ContactListItem[]
+  conversations Conversation[]
+  dispatches    MessageDispatch[]
+  tenant        Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, phone])
+  @@index([tenantId])
+  @@map("contacts")
+}
+
+model ContactListItem {
+  listId    String
+  contactId String
+
+  list    ContactList @relation(fields: [listId], references: [id], onDelete: Cascade)
+  contact Contact     @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@id([listId, contactId])
+  @@map("contact_list_items")
+}
+
+// ─── CAMPAIGNS ───────────────────────────────────────────────────────────────
+
+model Campaign {
+  id            String         @id @default(uuid())
+  tenantId      String
+  name          String
+  templateId    String
+  flowId        String?
+  contactListId String
+  status        CampaignStatus @default(DRAFT)
+  scheduledAt   DateTime?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  totalContacts Int            @default(0)
+  sent          Int            @default(0)
+  delivered     Int            @default(0)
+  read          Int            @default(0)
+  failed        Int            @default(0)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  tenant      Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  template    Template          @relation(fields: [templateId], references: [id])
+  flow        Flow?             @relation(fields: [flowId], references: [id])
+  contactList ContactList       @relation(fields: [contactListId], references: [id])
+  dispatches  MessageDispatch[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("campaigns")
+}
+
+model MessageDispatch {
+  id            String         @id @default(uuid())
+  tenantId      String
+  campaignId    String
+  contactId     String
+  birdMessageId String?
+  status        DispatchStatus @default(PENDING)
+  variables     Json?
+  sentAt        DateTime?
+  deliveredAt   DateTime?
+  readAt        DateTime?
+  failedAt      DateTime?
+  errorCode     String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact  Contact  @relation(fields: [contactId], references: [id])
+
+  @@index([tenantId])
+  @@index([campaignId])
+  @@index([birdMessageId])
+  @@map("message_dispatches")
+}
+
+// ─── CONVERSATIONS ───────────────────────────────────────────────────────────
+
+model Conversation {
+  id            String             @id @default(uuid())
+  tenantId      String
+  contactId     String
+  status        ConversationStatus @default(OPEN)
+  activeFlowId  String?
+  currentNodeId String?
+  startedAt     DateTime           @default(now())
+  lastMessageAt DateTime?
+  closedAt      DateTime?
+
+  contact  Contact   @relation(fields: [contactId], references: [id])
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@index([tenantId])
+  @@index([tenantId, contactId])
+  @@map("conversations")
+}
+
+model Message {
+  id             String        @id @default(uuid())
+  tenantId       String
+  conversationId String
+  direction      Direction
+  type           MessageType
+  content        Json
+  birdMessageId  String?
+  status         MessageStatus @default(SENT)
+  sentAt         DateTime?
+  deliveredAt    DateTime?
+  readAt         DateTime?
+  createdAt      DateTime      @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([conversationId])
+  @@index([birdMessageId])
+  @@map("messages")
+}
+
+// ─── FLOW EXECUTION ──────────────────────────────────────────────────────────
+
+model FlowExecution {
+  id             String          @id @default(uuid())
+  tenantId       String
+  flowId         String
+  conversationId String
+  currentNodeId  String
+  status         ExecutionStatus @default(RUNNING)
+  context        Json            @default("{}")
+  startedAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  flow Flow @relation(fields: [flowId], references: [id])
+
+  @@index([tenantId])
+  @@index([conversationId])
+  @@map("flow_executions")
+}
