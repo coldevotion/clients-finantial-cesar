@@ -1,5 +1,7 @@
 import { Module, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 import { HealthController } from './health.controller';
 import { BullModule } from '@nestjs/bullmq';
 import envConfig from './config/env.config';
@@ -14,11 +16,15 @@ import { ContactsModule } from './modules/contacts/contacts.module';
 import { ConversationsModule } from './modules/conversations/conversations.module';
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
+import { LogsModule } from './modules/logs/logs.module';
+import { BulkUploadsModule } from './modules/bulk-uploads/bulk-uploads.module';
 
 @Module({
   controllers: [HealthController],
   imports: [
     ConfigModule.forRoot({ isGlobal: true, load: [envConfig] }),
+    // Rate limiting: 300 requests per 60s per IP
+    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }]),
     BullModule.forRoot({
       connection: { url: process.env.REDIS_URL ?? 'redis://localhost:6379' },
     }),
@@ -32,6 +38,12 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
     ConversationsModule,
     WebhooksModule,
     AnalyticsModule,
+    LogsModule,
+    BulkUploadsModule,
+  ],
+  providers: [
+    // Apply ThrottlerGuard globally
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })
 export class AppModule {

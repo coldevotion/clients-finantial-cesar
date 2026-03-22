@@ -7,83 +7,13 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ─── ENUMS ───────────────────────────────────────────────────────────────────
+// ─── ENUMS ────────────────────────────────────────────────────────────────────
 
 enum UserRole {
-  SUPER_ADMIN
-  TENANT_ADMIN
-  TENANT_OPERATOR
-  TENANT_VIEWER
-}
-
-// ─── AUTH ─────────────────────────────────────────────────────────────────────
-
-model User {
-  id                   String    @id @default(uuid())
-  email                String    @unique
-  passwordHash         String
-  name                 String?
-  role                 UserRole  @default(TENANT_OPERATOR)
-  tenantId             String?
-  isEmailVerified      Boolean   @default(false)
-  twoFactorEnabled     Boolean   @default(false)
-  twoFactorSecret      String?   // TOTP secret (cifrado AES-256)
-  twoFactorBackupCodes String[]  // backup codes hasheados
-  avatarUrl            String?
-  lastLoginAt          DateTime?
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
-
-  tenant               Tenant?          @relation(fields: [tenantId], references: [id])
-  refreshTokens        RefreshToken[]
-  emailVerifications   EmailVerification[]
-  passwordResets       PasswordReset[]
-
-  @@index([email])
-  @@index([tenantId])
-  @@map("users")
-}
-
-model RefreshToken {
-  id        String   @id @default(uuid())
-  userId    String
-  tokenHash String   @unique // bcrypt hash del token real
-  expiresAt DateTime
-  revokedAt DateTime?
-  userAgent String?
-  ipAddress String?
-  createdAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@map("refresh_tokens")
-}
-
-model EmailVerification {
-  id        String   @id @default(uuid())
-  userId    String
-  tokenHash String   @unique
-  expiresAt DateTime
-  usedAt    DateTime?
-  createdAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("email_verifications")
-}
-
-model PasswordReset {
-  id        String   @id @default(uuid())
-  userId    String
-  tokenHash String   @unique
-  expiresAt DateTime
-  usedAt    DateTime?
-  createdAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("password_resets")
+  SUPER_ADMIN      // Administrador global de la plataforma Provired
+  TENANT_ADMIN     // Administrador de un cliente/organización
+  TENANT_OPERATOR  // Operador: crea campañas, sube bases
+  TENANT_VIEWER    // Solo lectura
 }
 
 enum Plan {
@@ -159,27 +89,123 @@ enum ExecutionStatus {
   FAILED
 }
 
-// ─── TENANT ──────────────────────────────────────────────────────────────────
+enum BulkUploadStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum LogLevel {
+  INFO
+  WARN
+  ERROR
+}
+
+// ─── AUTH ─────────────────────────────────────────────────────────────────────
+
+model User {
+  id                   String    @id @default(uuid())
+  email                String    @unique
+  passwordHash         String
+  name                 String?
+  role                 UserRole  @default(TENANT_OPERATOR)
+  tenantId             String?   // null solo para SUPER_ADMIN sin cliente asignado
+  isEmailVerified      Boolean   @default(false)
+  twoFactorEnabled     Boolean   @default(false)
+  twoFactorSecret      String?   // TOTP secret (cifrado AES-256)
+  twoFactorBackupCodes String[]  @default([])
+  avatarUrl            String?
+  lastLoginAt          DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  tenant             Tenant?             @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  refreshTokens      RefreshToken[]
+  emailVerifications EmailVerification[]
+  passwordResets     PasswordReset[]
+
+  @@index([email])
+  @@index([tenantId])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  userAgent String?
+  ipAddress String?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model EmailVerification {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("email_verifications")
+}
+
+model PasswordReset {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("password_resets")
+}
+
+// ─── TENANT (= CLIENTE en el negocio) ────────────────────────────────────────
+// Un Tenant representa una empresa/organización que usa la plataforma.
+// El SUPER_ADMIN crea Tenants y les asigna usuarios con sus roles.
 
 model Tenant {
-  id        String       @id @default(uuid())
-  name      String
-  slug      String       @unique
-  plan      Plan         @default(STARTER)
-  status    TenantStatus @default(ACTIVE)
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  id           String       @id @default(uuid())
+  name         String
+  slug         String       @unique          // identificador URL: banco-nacional
+  plan         Plan         @default(STARTER)
+  status       TenantStatus @default(ACTIVE)
+  // Datos de la empresa
+  document     String?                       // NIT / RUT / CUIT
+  email        String?                       // email de contacto
+  phone        String?                       // teléfono de contacto
+  notes        String?                       // notas internas
+  // Configuración de envíos
+  contactLimit Int          @default(1000)   // límite de contactos por campaña
+  omitActive   Boolean      @default(true)   // omitir contactos con ventana WA activa (24h)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 
+  users         User[]
   channels      TenantChannel[]
   templates     Template[]
   flows         Flow[]
   campaigns     Campaign[]
-  users         User[]
   contactLists  ContactList[]
   contacts      Contact[]
   conversations Conversation[]
+  bulkUploads   BulkUpload[]
+  logs          Log[]
 
   @@index([slug])
+  @@index([status])
   @@map("tenants")
 }
 
@@ -211,8 +237,18 @@ model Template {
   status         TemplateStatus @default(PENDING)
   category       String         // MARKETING | UTILITY | AUTHENTICATION
   language       String         @default("es")
-  components     Json           // header, body, footer, buttons
+  components     Json           @default("[]") // estructura Bird: header/body/footer/buttons
   variables      Json           @default("[]")
+  // HSM media fields
+  headerType     String?        // TEXT | IMAGE | VIDEO | DOCUMENT
+  headerText     String?
+  imageUrl       String?
+  videoUrl       String?
+  documentUrl    String?
+  thumbnailUrl   String?
+  footerText     String?
+  buttons        Json?          // [{ type, text, url?, phoneNumber?, payload? }]
+  bodyText       String?        // cuerpo extraído para búsqueda
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
@@ -278,7 +314,7 @@ model ContactList {
 model Contact {
   id        String   @id @default(uuid())
   tenantId  String
-  phone     String   // E.164: +521234567890
+  phone     String   // E.164: +573001234567
   name      String?
   metadata  Json?
   optedOut  Boolean  @default(false)
@@ -292,6 +328,7 @@ model Contact {
 
   @@unique([tenantId, phone])
   @@index([tenantId])
+  @@index([tenantId, optedOut])
   @@map("contacts")
 }
 
@@ -360,6 +397,7 @@ model MessageDispatch {
   @@index([tenantId])
   @@index([campaignId])
   @@index([birdMessageId])
+  @@index([tenantId, status])
   @@map("message_dispatches")
 }
 
@@ -382,6 +420,7 @@ model Conversation {
 
   @@index([tenantId])
   @@index([tenantId, contactId])
+  @@index([tenantId, status])
   @@map("conversations")
 }
 
@@ -425,4 +464,51 @@ model FlowExecution {
   @@index([tenantId])
   @@index([conversationId])
   @@map("flow_executions")
+}
+
+// ─── BULK UPLOADS ─────────────────────────────────────────────────────────────
+
+model BulkUpload {
+  id            String           @id @default(uuid())
+  tenantId      String
+  fileName      String
+  fileSize      Int
+  mimeType      String
+  status        BulkUploadStatus @default(PENDING)
+  totalRows     Int              @default(0)
+  processedRows Int              @default(0)
+  failedRows    Int              @default(0)
+  errorLog      Json?
+  storagePath   String
+  listId        String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("bulk_uploads")
+}
+
+// ─── LOGS ─────────────────────────────────────────────────────────────────────
+
+model Log {
+  id         String   @id @default(uuid())
+  tenantId   String?
+  level      LogLevel @default(INFO)
+  action     String
+  resource   String?
+  resourceId String?
+  userId     String?
+  meta       Json?
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([level])
+  @@index([createdAt])
+  @@map("logs")
 }

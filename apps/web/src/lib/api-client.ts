@@ -1,4 +1,5 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+const MOCK_MODE = process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
 
 async function getStoredToken(): Promise<string | null> {
   if (typeof window === 'undefined') return null;
@@ -10,19 +11,40 @@ async function getStoredToken(): Promise<string | null> {
   }
 }
 
-async function request<T>(path: string, options?: RequestInit, isRetry = false): Promise<T> {
+async function request<T>(path: string, options?: RequestInit & { _query?: Record<string, string | undefined> }, isRetry = false): Promise<T> {
+  // Build path with query params
+  let fullPath = path;
+  if (options?._query) {
+    const params = new URLSearchParams();
+    for (const [k, v] of Object.entries(options._query)) {
+      if (v !== undefined && v !== '') params.set(k, v);
+    }
+    const qs = params.toString();
+    if (qs) fullPath = `${path}?${qs}`;
+  }
+
+  if (MOCK_MODE) {
+    const { resolveMock } = await import('./mock-data');
+    const method = options?.method ?? 'GET';
+    const data = resolveMock(method, path); // pass path without query for mock lookup
+    await new Promise((r) => setTimeout(r, 120));
+    return data as T;
+  }
+
   const token = await getStoredToken();
 
-  const res = await fetch(`${API_URL}/api${path}`, {
+  const isFormData = options?.body instanceof FormData;
+
+  const res = await fetch(`${API_URL}/api${fullPath}`, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options?.headers,
     },
   });
 
-  // Access token expirado → intentar refresh una vez
+  // Access token expired → try refresh once
   if (res.status === 401 && !isRetry && typeof window !== 'undefined') {
     const { refreshAccessToken } = await import('@/store/auth.store');
     const newToken = await refreshAccessToken();
@@ -41,12 +63,18 @@ async function request<T>(path: string, options?: RequestInit, isRetry = false):
 }
 
 export const api = {
-  get: <T>(path: string, init?: RequestInit) => request<T>(path, { method: 'GET', ...init }),
+  get: <T>(path: string, query?: Record<string, string | undefined>, init?: RequestInit) =>
+    request<T>(path, { method: 'GET', _query: query, ...init }),
   post: <T>(path: string, body: unknown, init?: RequestInit) =>
     request<T>(path, { method: 'POST', body: JSON.stringify(body), ...init }),
+  postForm: <T>(path: string, body: FormData, init?: RequestInit) =>
+    request<T>(path, { method: 'POST', body, ...init }),
   put: <T>(path: string, body: unknown, init?: RequestInit) =>
     request<T>(path, { method: 'PUT', body: JSON.stringify(body), ...init }),
   patch: <T>(path: string, body: unknown, init?: RequestInit) =>
     request<T>(path, { method: 'PATCH', body: JSON.stringify(body), ...init }),
   delete: <T>(path: string, init?: RequestInit) => request<T>(path, { method: 'DELETE', ...init }),
 };
+
+/** Alias for backwards compat */
+export const apiClient = api;

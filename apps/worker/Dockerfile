@@ -29,6 +29,9 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
+# Prisma needs openssl on Alpine
+RUN apk add --no-cache openssl
+
 COPY --from=builder /app/apps/worker/dist ./dist
 COPY --from=builder /prod/worker/node_modules ./node_modules
 COPY --from=builder /app/packages/database/prisma ./prisma

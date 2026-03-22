@@ -8,12 +8,20 @@ RUN corepack enable && corepack prepare pnpm@9 --activate
 FROM base AS builder
 WORKDIR /app
 
+# NEXT_PUBLIC_* vars must be available at BUILD time — Next.js bakes them in
+# via webpack's DefinePlugin. Pass them as build args in coolify-compose.yml.
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_WS_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_WS_URL=$NEXT_PUBLIC_WS_URL
+ENV NEXT_PUBLIC_MOCK_MODE=false
+ENV NEXT_TELEMETRY_DISABLED=1
+
 COPY . .
 RUN pnpm install --frozen-lockfile
 
-# Build packages needed by web
+# Build only packages that web actually needs
 RUN pnpm --filter @wa/types run build
-RUN pnpm --filter @wa/ui run build --if-present
 
 # Build Next.js (output: standalone configured in next.config.ts)
 RUN pnpm --filter @wa/web run build

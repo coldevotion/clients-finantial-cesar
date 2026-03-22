@@ -1,14 +1,29 @@
-import { Handle, Position } from '@xyflow/react';
+import { Clock } from 'lucide-react';
+import { BaseNode } from './BaseNode';
 
-export function WaitResponseNode({ data }: { data: any }) {
+export function WaitResponseNode({ data, selected }: { data: any; selected?: boolean }) {
+  const timeout = data.config?.timeoutHours ?? 24;
+  const saveAs  = data.config?.saveAs;
+
   return (
-    <div className="bg-yellow-50 border-2 border-yellow-400 rounded-xl px-4 py-3 min-w-48 shadow-sm">
-      <Handle type="target" position={Position.Top} className="!bg-yellow-400" />
-      <p className="text-xs font-bold text-yellow-700 uppercase tracking-wider">Esperar respuesta</p>
-      <p className="text-sm text-gray-500 mt-1">
-        Timeout: {data.config?.timeoutHours ?? '24'}h
-      </p>
-      <Handle type="source" position={Position.Bottom} className="!bg-yellow-400" />
-    </div>
+    <BaseNode
+      selected={selected}
+      accent="#F59E0B"
+      icon={<Clock />}
+      typeLabel="Esperar respuesta"
+      label={data.label ?? 'Esperar'}
+    >
+      <div className="space-y-1">
+        <div className="flex items-center gap-1.5">
+          <Clock size={10} className="text-slate-500 flex-shrink-0" />
+          <span className="text-[11px] text-slate-400">Timeout: <span className="text-amber-400 font-semibold">{timeout}h</span></span>
+        </div>
+        {saveAs && (
+          <div className="text-[10px] text-slate-500 font-mono truncate">
+            → var: <span className="text-slate-300">{saveAs}</span>
+          </div>
+        )}
+      </div>
+    </BaseNode>
   );
 }

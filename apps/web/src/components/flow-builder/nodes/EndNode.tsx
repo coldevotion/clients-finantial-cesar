@@ -1,10 +1,17 @@
-import { Handle, Position } from '@xyflow/react';
+import { CircleStop } from 'lucide-react';
+import { BaseNode } from './BaseNode';
 
-export function EndNode() {
+export function EndNode({ data, selected }: { data?: any; selected?: boolean }) {
   return (
-    <div className="bg-red-50 border-2 border-red-400 rounded-xl px-4 py-3 min-w-32 shadow-sm">
-      <Handle type="target" position={Position.Top} className="!bg-red-400" />
-      <p className="text-xs font-bold text-red-700 uppercase tracking-wider text-center">Fin</p>
-    </div>
+    <BaseNode
+      selected={selected}
+      hasSource={false}
+      accent="#EF4444"
+      icon={<CircleStop />}
+      typeLabel="Fin del flujo"
+      label={data?.label ?? 'Completado'}
+    >
+      <p className="text-[11px] text-slate-400">La conversación termina aquí</p>
+    </BaseNode>
   );
 }

@@ -1,11 +1,21 @@
-import { Handle, Position } from '@xyflow/react';
+import { Zap } from 'lucide-react';
+import { BaseNode } from './BaseNode';
 
-export function TriggerNode({ data }: { data: any }) {
+export function TriggerNode({ data, selected }: { data: any; selected?: boolean }) {
+  const triggerType = data.config?.type === 'inbound' ? 'Mensaje entrante'
+    : data.config?.type === 'keyword' ? 'Palabra clave'
+    : 'Inicio de campaña';
+
   return (
-    <div className="bg-purple-50 border-2 border-purple-400 rounded-xl px-4 py-3 min-w-40 shadow-sm">
-      <p className="text-xs font-bold text-purple-700 uppercase tracking-wider">Trigger</p>
-      <p className="text-sm font-medium text-gray-800 mt-1">{data.label ?? 'Inicio'}</p>
-      <Handle type="source" position={Position.Bottom} className="!bg-purple-400" />
-    </div>
+    <BaseNode
+      selected={selected}
+      hasTarget={false}
+      accent="#267EF0"
+      icon={<Zap />}
+      typeLabel="Trigger"
+      label={data.label ?? 'Inicio'}
+    >
+      <p className="text-[11px] text-slate-400">{triggerType}</p>
+    </BaseNode>
   );
 }

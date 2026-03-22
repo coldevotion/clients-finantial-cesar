@@ -1,12 +1,35 @@
-import { Handle, Position } from '@xyflow/react';
+import { MessageSquare } from 'lucide-react';
+import { BaseNode } from './BaseNode';
 
-export function SendMessageNode({ data }: { data: any }) {
+export function SendMessageNode({ data, selected }: { data: any; selected?: boolean }) {
+  const isTemplate = data.config?.messageType === 'template';
+  const preview = isTemplate
+    ? data.config?.templateName
+    : data.config?.text;
+
   return (
-    <div className="bg-blue-50 border-2 border-blue-400 rounded-xl px-4 py-3 min-w-48 shadow-sm">
-      <Handle type="target" position={Position.Top} className="!bg-blue-400" />
-      <p className="text-xs font-bold text-blue-700 uppercase tracking-wider">Mensaje</p>
-      <p className="text-sm text-gray-700 mt-1 line-clamp-2">{data.config?.content ?? 'Sin contenido'}</p>
-      <Handle type="source" position={Position.Bottom} className="!bg-blue-400" />
-    </div>
+    <BaseNode
+      selected={selected}
+      accent="#10B981"
+      icon={<MessageSquare />}
+      typeLabel="Enviar mensaje"
+      label={data.label ?? 'Mensaje'}
+    >
+      {preview ? (
+        <>
+          <span
+            className="inline-block text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded mb-1.5"
+            style={isTemplate
+              ? { backgroundColor: 'rgba(38,126,240,0.2)', color: '#267EF0' }
+              : { backgroundColor: 'rgba(16,185,129,0.2)', color: '#10B981' }
+            }>
+            {isTemplate ? 'Plantilla' : 'Texto'}
+          </span>
+          <p className="text-[11px] text-slate-300 line-clamp-2 leading-relaxed">{preview}</p>
+        </>
+      ) : (
+        <p className="text-[11px] text-slate-500 italic">Sin contenido configurado</p>
+      )}
+    </BaseNode>
   );
 }

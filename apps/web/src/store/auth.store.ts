@@ -4,13 +4,14 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { api } from '@/lib/api-client';
 
-interface AuthUser {
+export interface AuthUser {
   id: string;
   email: string;
   name?: string;
   role: string;
   tenantId: string | null;
   twoFactorEnabled: boolean;
+  isEmailVerified?: boolean;
 }
 
 interface AuthState {
@@ -23,12 +24,30 @@ interface AuthState {
   getAccessToken: () => string | null;
 }
 
+const MOCK_MODE = process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
+
+// Cambia el rol aquí para probar la UI de admin sin backend:
+// 'TENANT_OPERATOR' → usuario normal
+// 'TENANT_ADMIN'    → admin con sección Administración visible
+// 'SUPER_ADMIN'     → super admin
+const MOCK_ROLE = (process.env.NEXT_PUBLIC_MOCK_ROLE ?? 'TENANT_ADMIN') as string;
+
+const MOCK_USER: AuthUser = {
+  id: 'mock-user-1',
+  email: 'demo@provired.com',
+  name: 'Demo Admin',
+  role: MOCK_ROLE,
+  tenantId: 'mock-tenant-1',
+  twoFactorEnabled: false,
+  isEmailVerified: true,
+};
+
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
-      user: null,
-      accessToken: null,
-      refreshToken: null,
+      user:         MOCK_MODE ? MOCK_USER : null,
+      accessToken:  MOCK_MODE ? 'mock-token' : null,
+      refreshToken: MOCK_MODE ? 'mock-refresh' : null,
 
       setTokens: (accessToken, refreshToken, user) => {
         if (typeof document !== 'undefined') {
@@ -56,7 +75,19 @@ export const useAuthStore = create<AuthState>()(
   ),
 );
 
-// Función para refrescar el access token automáticamente
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+export function useIsAdmin(): boolean {
+  const role = useAuthStore(s => s.user?.role ?? '');
+  return role === 'SUPER_ADMIN' || role === 'TENANT_ADMIN';
+}
+
+export function useIsSuperAdmin(): boolean {
+  return useAuthStore(s => s.user?.role === 'SUPER_ADMIN');
+}
+
+// ─── Token refresh ────────────────────────────────────────────────────────────
+
 export async function refreshAccessToken(): Promise<string | null> {
   const { refreshToken, setTokens, clearAuth } = useAuthStore.getState();
   if (!refreshToken) return null;

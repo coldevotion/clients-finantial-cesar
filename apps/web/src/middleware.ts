@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+// En modo mock no se necesita backend ni auth real
+const MOCK_MODE = process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
+
 const PUBLIC_PATHS = [
   '/login',
   '/register',
@@ -15,6 +18,9 @@ function isPublicPath(pathname: string): boolean {
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+
+  // Mock mode: skip all auth checks
+  if (MOCK_MODE) return NextResponse.next();
 
   // Allow public routes and Next.js internals
   if (isPublicPath(pathname)) {

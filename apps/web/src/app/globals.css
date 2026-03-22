@@ -1,3 +1,158 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html {
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-surface text-text-primary;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { @apply bg-border-strong rounded-full; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-text-muted; }
+
+  /* Focus ring */
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-primary-500;
+  }
+}
+
+@layer components {
+  /* Button base */
+  .btn {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold
+           cursor-pointer transition-all duration-150 focus-visible:ring-2
+           focus-visible:ring-primary-500 focus-visible:ring-offset-1 select-none;
+  }
+  .btn-primary {
+    @apply btn bg-primary-500 text-white hover:bg-primary-600 active:scale-[0.97]
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-secondary {
+    @apply btn bg-surface-muted text-text-secondary border border-border
+           hover:bg-border hover:text-text-primary active:scale-[0.97];
+  }
+  .btn-danger {
+    @apply btn bg-danger/10 text-danger border border-danger/20 hover:bg-danger/20 active:scale-[0.97];
+  }
+  .btn-ghost {
+    @apply btn text-text-secondary hover:bg-surface-muted active:scale-[0.97];
+  }
+
+  /* Card */
+  .card {
+    @apply bg-surface-card border border-border rounded-xl shadow-card;
+  }
+
+  /* Input base */
+  .input {
+    @apply w-full border border-border rounded-md px-3 py-2.5 text-sm text-text-primary
+           bg-white placeholder:text-text-muted
+           focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-400
+           transition-colors duration-150;
+  }
+
+  /* Badge */
+  .badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
+  }
+}
+
+/* ── React Flow — dark canvas ───────────────────────────────────── */
+.react-flow__node {
+  cursor: pointer;
+}
+
+/* Handle — always visible and interactive */
+.react-flow__handle {
+  transition: transform 150ms ease, box-shadow 150ms ease !important;
+  /* Expand clickable area without changing visual size */
+  z-index: 10 !important;
+}
+.react-flow__handle::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+}
+.react-flow__handle:hover {
+  transform: scale(1.5) !important;
+  box-shadow: 0 0 0 5px rgba(255,255,255,0.15) !important;
+}
+.react-flow__handle-connecting {
+  transform: scale(1.6) !important;
+  box-shadow: 0 0 0 6px rgba(38,126,240,0.5) !important;
+}
+.react-flow__handle-valid {
+  transform: scale(1.6) !important;
+  box-shadow: 0 0 0 6px rgba(16,185,129,0.6) !important;
+}
+
+/* Edges */
+.react-flow__edge-path {
+  stroke-width: 2;
+}
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke-width: 3;
+}
+
+/* Controls — dark style */
+.react-flow__controls {
+  background: #1C2333 !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  border-radius: 12px !important;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4) !important;
+}
+.react-flow__controls-button {
+  background: #1C2333 !important;
+  border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+  fill: #94A3B8 !important;
+}
+.react-flow__controls-button:hover {
+  background: rgba(255,255,255,0.08) !important;
+  fill: #F8FAFC !important;
+}
+.react-flow__controls-button:last-child {
+  border-bottom: none !important;
+}
+
+/* MiniMap */
+.react-flow__minimap {
+  border-radius: 12px !important;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4) !important;
+}
+.react-flow__minimap-mask {
+  fill: rgba(12,18,32,0.65) !important;
+}
+
+/* Edge label */
+.react-flow__edge-textbg {
+  border-radius: 4px;
+}
+
+/* Selection box */
+.react-flow__selection {
+  background: rgba(38,126,240,0.08) !important;
+  border: 1px dashed rgba(38,126,240,0.4) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
