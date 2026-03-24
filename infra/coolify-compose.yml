@@ -6,7 +6,7 @@ services:
     build:
       context: ..
       dockerfile: apps/api/Dockerfile
-    entrypoint: ["sh", "-c", "npx prisma migrate deploy --schema=./prisma/schema.prisma"]
+    entrypoint: ["sh", "-c", "./node_modules/.bin/prisma migrate deploy --schema=./prisma/schema.prisma"]
     restart: "no"
     environment:
       DATABASE_URL: ${DATABASE_URL}
