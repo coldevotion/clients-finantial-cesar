@@ -32,6 +32,11 @@ export class AuthService {
 
   // ─── REGISTER ──────────────────────────────────────────────────────────────
 
+  private get smtpConfigured(): boolean {
+    const host = process.env.SMTP_HOST;
+    return !!host && host !== 'localhost';
+  }
+
   async register(dto: RegisterDto, ipAddress?: string) {
     const existing = await prisma.user.findUnique({ where: { email: dto.email } });
     if (existing) throw new ConflictException('Email already registered');
@@ -48,6 +53,9 @@ export class AuthService {
       tenantId = tenant.id;
     }
 
+    // Si no hay SMTP configurado, auto-verificar el email
+    const isEmailVerified = !this.smtpConfigured;
+
     const user = await prisma.user.create({
       data: {
         email: dto.email,
@@ -55,13 +63,16 @@ export class AuthService {
         name: dto.name,
         tenantId,
         role: tenantId ? 'TENANT_ADMIN' : 'TENANT_OPERATOR',
+        isEmailVerified,
       },
     });
 
-    // Enviar email de verificación
-    await this.sendVerificationEmail(user.id, user.email);
+    if (this.smtpConfigured) {
+      await this.sendVerificationEmail(user.id, user.email);
+      return { message: 'Registration successful. Check your email to verify your account.' };
+    }
 
-    return { message: 'Registration successful. Check your email to verify your account.' };
+    return { message: 'Registration successful.' };
   }
 
   // ─── LOGIN ─────────────────────────────────────────────────────────────────
@@ -382,8 +393,10 @@ export class AuthService {
   }
 
   private encryptSecret(secret: string): string {
+    const rawKey = process.env.ENCRYPTION_KEY ?? '';
+    if (rawKey.length !== 64) throw new BadRequestException('2FA requires ENCRYPTION_KEY to be configured (openssl rand -hex 32)');
     const { createCipheriv, randomBytes: rb } = require('crypto');
-    const key = Buffer.from(process.env.ENCRYPTION_KEY ?? '', 'hex');
+    const key = Buffer.from(rawKey, 'hex');
     const iv = rb(16);
     const cipher = createCipheriv('aes-256-gcm', key, iv);
     const encrypted = Buffer.concat([cipher.update(secret, 'utf8'), cipher.final()]);
@@ -392,8 +405,10 @@ export class AuthService {
   }
 
   private decryptSecret(value: string): string {
+    const rawKey = process.env.ENCRYPTION_KEY ?? '';
+    if (rawKey.length !== 64) throw new BadRequestException('2FA requires ENCRYPTION_KEY to be configured (openssl rand -hex 32)');
     const { createDecipheriv } = require('crypto');
-    const key = Buffer.from(process.env.ENCRYPTION_KEY ?? '', 'hex');
+    const key = Buffer.from(rawKey, 'hex');
     const buf = Buffer.from(value, 'base64');
     const iv = buf.subarray(0, 16);
     const tag = buf.subarray(16, 32);

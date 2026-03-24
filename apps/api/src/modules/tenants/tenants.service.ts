@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { prisma } from '@wa/database';
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
@@ -174,7 +175,9 @@ export class TenantsService {
   // ─── Crypto helpers ───────────────────────────────────────────────────────
 
   private encrypt(value: string): string {
-    const key = Buffer.from(process.env.ENCRYPTION_KEY ?? '', 'hex');
+    const rawKey = process.env.ENCRYPTION_KEY ?? '';
+    if (rawKey.length !== 64) throw new BadRequestException('Bird channel configuration requires ENCRYPTION_KEY to be set (openssl rand -hex 32)');
+    const key = Buffer.from(rawKey, 'hex');
     const iv = randomBytes(16);
     const cipher = createCipheriv('aes-256-gcm', key, iv);
     const encrypted = Buffer.concat([cipher.update(value, 'utf8'), cipher.final()]);
@@ -183,7 +186,9 @@ export class TenantsService {
   }
 
   private decrypt(value: string): string {
-    const key = Buffer.from(process.env.ENCRYPTION_KEY ?? '', 'hex');
+    const rawKey = process.env.ENCRYPTION_KEY ?? '';
+    if (rawKey.length !== 64) throw new BadRequestException('Bird channel configuration requires ENCRYPTION_KEY to be set (openssl rand -hex 32)');
+    const key = Buffer.from(rawKey, 'hex');
     const buf = Buffer.from(value, 'base64');
     const iv = buf.subarray(0, 16);
     const tag = buf.subarray(16, 32);
