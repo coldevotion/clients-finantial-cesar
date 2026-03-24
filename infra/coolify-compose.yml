@@ -1,15 +1,3 @@
-version: '3.9'
-
-# ─────────────────────────────────────────────────────────────────────────────
-# PRODUCCIÓN — Docker Compose para Coolify
-#
-# Cómo desplegar en Coolify:
-#   1. Crear nuevo recurso "Docker Compose" apuntando a este archivo
-#   2. Configurar TODAS las variables de entorno en la sección de Coolify
-#   3. Orden de inicio:
-#      postgres/redis → migrate → api/worker → web
-# ─────────────────────────────────────────────────────────────────────────────
-
 services:
 
   # ─── INFRAESTRUCTURA ───────────────────────────────────────────────────────
@@ -18,13 +6,13 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_DB:       wa_campaigns
-      POSTGRES_USER:     ${POSTGRES_USER:-wauser}
+      POSTGRES_DB: wa_campaigns
+      POSTGRES_USER: ${POSTGRES_USER:-wauser}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-wauser} -d wa_campaigns']
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-wauser} -d wa_campaigns"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -32,58 +20,28 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    command: >
-      redis-server
-      --requirepass ${REDIS_PASSWORD}
-      --appendonly yes
-      --maxmemory 256mb
-      --maxmemory-policy allkeys-lru
+    command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD}', 'ping']
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # ─── MIGRATE (one-shot: corre migraciones + seed y sale) ──────────────────
-  # NOTA: usamos la imagen del API que ya tiene prisma y el schema copiado.
+  # ─── MIGRATE (one-shot: solo corre prisma migrate deploy y sale) ───────────
 
   migrate:
     build:
       context: ..
       dockerfile: apps/api/Dockerfile
-    # Override entrypoint para solo correr migración (sin iniciar el server)
-    entrypoint: ['sh', '-c']
-    command:
-      - |
-        set -e
-        echo "▶ Running migrations..."
-        npx prisma migrate deploy --schema=./prisma/schema.prisma
-        echo "✅ Migrations done."
-
-        USER_COUNT=$$(node -e "
-        const { PrismaClient } = require('@prisma/client');
-        const p = new PrismaClient({ log: [] });
-        p.user.count().then(n => { process.stdout.write(String(n)); p.\$disconnect(); }).catch(() => process.stdout.write('1'));
-        " 2>/dev/null)
-
-        if [ "$$USER_COUNT" = "0" ]; then
-          echo "▶ Seeding first SUPER_ADMIN..."
-          node dist/seed.js
-        else
-          echo "▶ Already seeded ($$USER_COUNT users), skipping."
-        fi
-    restart: 'no'
+    entrypoint: ["sh", "-c", "npx prisma migrate deploy --schema=./prisma/schema.prisma"]
+    restart: "no"
     depends_on:
       postgres:
         condition: service_healthy
     environment:
-      DATABASE_URL:         postgresql://${POSTGRES_USER:-wauser}:${POSTGRES_PASSWORD}@postgres:5432/wa_campaigns
-      SEED_ADMIN_EMAIL:     ${SEED_ADMIN_EMAIL:-admin@provired.com}
-      SEED_ADMIN_PASSWORD:  ${SEED_ADMIN_PASSWORD}
-      SEED_TENANT_NAME:     ${SEED_TENANT_NAME:-Provired}
-      SEED_TENANT_SLUG:     ${SEED_TENANT_SLUG:-provired}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-wauser}:${POSTGRES_PASSWORD}@postgres:5432/wa_campaigns
 
   # ─── API ──────────────────────────────────────────────────────────────────
 
@@ -100,28 +58,32 @@ services:
       migrate:
         condition: service_completed_successfully
     environment:
-      NODE_ENV:             production
-      PORT:                 3001
-      DATABASE_URL:         postgresql://${POSTGRES_USER:-wauser}:${POSTGRES_PASSWORD}@postgres:5432/wa_campaigns
-      REDIS_URL:            redis://:${REDIS_PASSWORD}@redis:6379
-      ENCRYPTION_KEY:       ${ENCRYPTION_KEY}
-      JWT_SECRET:           ${JWT_SECRET}
-      JWT_REFRESH_SECRET:   ${JWT_REFRESH_SECRET}
-      SMTP_HOST:            ${SMTP_HOST}
-      SMTP_PORT:            ${SMTP_PORT:-587}
-      SMTP_SECURE:          ${SMTP_SECURE:-false}
-      SMTP_USER:            ${SMTP_USER}
-      SMTP_PASS:            ${SMTP_PASS}
-      MAIL_FROM_NAME:       ${MAIL_FROM_NAME:-Provired}
-      MAIL_FROM_ADDRESS:    ${MAIL_FROM_ADDRESS}
-      BIRD_WEBHOOK_SECRET:  ${BIRD_WEBHOOK_SECRET}
-      WEB_URL:              ${WEB_URL}
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://${POSTGRES_USER:-wauser}:${POSTGRES_PASSWORD}@postgres:5432/wa_campaigns
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASS: ${SMTP_PASS}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Provired}
+      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS}
+      BIRD_WEBHOOK_SECRET: ${BIRD_WEBHOOK_SECRET}
+      WEB_URL: ${WEB_URL}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@provired.com}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD}
+      SEED_TENANT_NAME: ${SEED_TENANT_NAME:-Provired}
+      SEED_TENANT_SLUG: ${SEED_TENANT_SLUG:-provired}
     ports:
-      - '3001:3001'
+      - "3001:3001"
     volumes:
       - api_uploads:/app/uploads
     healthcheck:
-      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:3001/api/health']
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -142,16 +104,15 @@ services:
       migrate:
         condition: service_completed_successfully
     environment:
-      NODE_ENV:       production
-      DATABASE_URL:   postgresql://${POSTGRES_USER:-wauser}:${POSTGRES_PASSWORD}@postgres:5432/wa_campaigns
-      REDIS_URL:      redis://:${REDIS_PASSWORD}@redis:6379
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-wauser}:${POSTGRES_PASSWORD}@postgres:5432/wa_campaigns
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
     volumes:
       - api_uploads:/app/uploads
 
-  # ─── WEB (Next.js) ────────────────────────────────────────────────────────
-  # IMPORTANTE: NEXT_PUBLIC_* se hornean en el bundle durante el build.
-  # Deben pasarse como build args aquí, no solo como env vars en runtime.
+  # ─── WEB ──────────────────────────────────────────────────────────────────
+  # NEXT_PUBLIC_* se hornean en el bundle — se pasan como build args.
 
   web:
     build:
@@ -159,18 +120,17 @@ services:
       dockerfile: apps/web/Dockerfile
       args:
         NEXT_PUBLIC_API_URL: ${API_URL}
-        NEXT_PUBLIC_WS_URL:  ${WS_URL}
+        NEXT_PUBLIC_WS_URL: ${WS_URL}
     restart: unless-stopped
     depends_on:
       api:
         condition: service_healthy
     environment:
-      # Estas vars son para runtime (server components / middleware si las usas)
-      NEXT_PUBLIC_API_URL:   ${API_URL}
-      NEXT_PUBLIC_WS_URL:    ${WS_URL}
-      NEXT_PUBLIC_MOCK_MODE: 'false'
+      NEXT_PUBLIC_API_URL: ${API_URL}
+      NEXT_PUBLIC_WS_URL: ${WS_URL}
+      NEXT_PUBLIC_MOCK_MODE: "false"
     ports:
-      - '3000:3000'
+      - "3000:3000"
 
 volumes:
   postgres_data:

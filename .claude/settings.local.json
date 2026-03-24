@@ -2,7 +2,14 @@
   "permissions": {
     "allow": [
       "Bash(find d:nasGithubcoldevotionclients-finantial-cesar -maxdepth 2 -type f -name *.json -o -name *.toml -o -name Dockerfile* -o -name .env* -o -name *.yaml -o -name *.yml)",
-      "Bash(find d:nasGithubcoldevotionclients-finantial-cesar -maxdepth 2 -name prisma.schema -o -name schema.prisma -o -name *railway* -o -name *vercel* -o -name netlify* -o -name nixpacks*)"
+      "Bash(find d:nasGithubcoldevotionclients-finantial-cesar -maxdepth 2 -name prisma.schema -o -name schema.prisma -o -name *railway* -o -name *vercel* -o -name netlify* -o -name nixpacks*)",
+      "Skill(update-config)",
+      "Skill(update-config:*)",
+      "Bash(git config:*)",
+      "Bash(/usr/local/bin/git-ship:*)",
+      "Bash(chmod +x /usr/local/bin/git-ship)",
+      "Bash(echo $HOME)",
+      "Bash(git ship:*)"
     ]
   }
 }
