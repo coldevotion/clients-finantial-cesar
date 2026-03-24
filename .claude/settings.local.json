@@ -11,7 +11,8 @@
       "Bash(echo $HOME)",
       "Bash(git ship:*)",
       "Read(//Users/avrcodev/**)",
-      "Bash(ssh -T git@github.com)"
+      "Bash(ssh -T git@github.com)",
+      "Bash(pnpm install:*)"
     ]
   }
 }
