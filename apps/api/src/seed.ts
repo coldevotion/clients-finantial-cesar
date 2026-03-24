@@ -9,11 +9,10 @@
  *   SEED_TENANT_SLUG    (default: provired)
  */
 
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@wa/database';
 import * as bcrypt from 'bcrypt';
 
 async function main() {
-  const prisma = new PrismaClient();
 
   const email      = process.env.SEED_ADMIN_EMAIL    ?? 'admin@provired.com';
   const password   = process.env.SEED_ADMIN_PASSWORD ?? '';
@@ -55,6 +54,7 @@ async function main() {
   console.log('🚀  Seed complete.');
   await prisma.$disconnect();
 }
+
 
 main().catch(err => {
   console.error('❌  Seed failed:', err);

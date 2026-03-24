@@ -167,7 +167,6 @@ export class AnalyticsService {
         ...(from || to ? { createdAt: { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) } } : {}),
       },
       include: { template: { select: { id: true, name: true, category: true } } },
-      select: { id: true, name: true, sent: true, delivered: true, read: true, failed: true, templateId: true, template: true },
     });
 
     // Group by template

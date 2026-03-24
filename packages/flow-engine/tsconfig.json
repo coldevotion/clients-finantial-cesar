@@ -4,9 +4,9 @@
     "module": "commonjs",
     "declaration": true,
     "outDir": "./dist",
-    "rootDir": "./src",
     "skipLibCheck": true,
     "strict": false,
+    "types": ["node"],
     "paths": {
       "@wa/types": ["../types/src/index.ts"],
       "@wa/bird-client": ["../bird-client/src/index.ts"]

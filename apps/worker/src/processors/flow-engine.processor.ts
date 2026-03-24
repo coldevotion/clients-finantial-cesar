@@ -1,5 +1,5 @@
-import { Processor, WorkerHost } from '@nestjs/bullmq';
-import { Job } from 'bullmq';
+import { Processor, WorkerHost, InjectQueue } from '@nestjs/bullmq';
+import { Job, Queue } from 'bullmq';
 import { prisma } from '@wa/database';
 import { FlowEngine } from '@wa/flow-engine';
 import type { FlowExecutionState, FlowGraph } from '@wa/flow-engine';
@@ -16,6 +16,10 @@ interface FlowExecutionJob {
 
 @Processor('flow-execution')
 export class FlowEngineProcessor extends WorkerHost {
+  constructor(@InjectQueue('flow-execution') private readonly flowQueue: Queue) {
+    super();
+  }
+
   async process(job: Job<FlowExecutionJob>): Promise<void> {
     const { tenantId, conversationId, flowId, currentNodeId, inboundMessage } = job.data;
 
@@ -81,7 +85,7 @@ export class FlowEngineProcessor extends WorkerHost {
         });
       },
       onDelaySchedule: async (_updatedState, delayMs) => {
-        await job.queue.add('execute', job.data, { delay: delayMs });
+        await this.flowQueue.add('execute', job.data, { delay: delayMs });
       },
     });
 

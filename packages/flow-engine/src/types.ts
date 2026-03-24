@@ -23,6 +23,7 @@ export interface NodeHandler {
     node: FlowNode,
     state: FlowExecutionState,
     inboundMessage?: string,
+    graph?: FlowGraph,
   ): Promise<NodeExecutionResult>;
 }
 

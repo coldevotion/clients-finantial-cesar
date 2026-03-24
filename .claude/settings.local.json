@@ -13,7 +13,21 @@
       "Read(//Users/avrcodev/**)",
       "Bash(ssh -T git@github.com)",
       "Bash(pnpm install:*)",
-      "Bash(pnpm --filter @wa/bird-client run build)"
+      "Bash(pnpm --filter @wa/bird-client run build)",
+      "Bash(pnpm --filter @wa/flow-engine run build)",
+      "Bash(for pkg:*)",
+      "Bash(do echo:*)",
+      "Read(//Users/avrcodev/Documents/GitHub/clients-finantial-cesar/packages/$pkg/**)",
+      "Bash(done)",
+      "Bash(pnpm --filter @wa/types run build)",
+      "Bash(pnpm --filter @wa/database run generate)",
+      "Bash(pnpm --filter @wa/database run build)",
+      "Bash(pnpm --filter @wa/api run build)",
+      "Bash(pnpm --filter @wa/worker run build)",
+      "Bash(grep -v \"^$\")",
+      "Bash(npx nest:*)",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(xargs cat:*)"
     ]
   }
 }
