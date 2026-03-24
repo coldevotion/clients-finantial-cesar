@@ -2,7 +2,7 @@
 set -e
 
 echo "▶ Running Prisma migrations..."
-./node_modules/.bin/prisma migrate deploy --schema=./prisma/schema.prisma
+node ./node_modules/prisma/build/index.js migrate deploy --schema=./prisma/schema.prisma
 
 # Run seed only on first boot (no users in DB yet).
 # Redirect stderr to /dev/null so Prisma connection logs don't pollute USER_COUNT.
