@@ -9,7 +9,9 @@
       "Bash(/usr/local/bin/git-ship:*)",
       "Bash(chmod +x /usr/local/bin/git-ship)",
       "Bash(echo $HOME)",
-      "Bash(git ship:*)"
+      "Bash(git ship:*)",
+      "Read(//Users/avrcodev/**)",
+      "Bash(ssh -T git@github.com)"
     ]
   }
 }
