@@ -12,7 +12,8 @@
       "Bash(git ship:*)",
       "Read(//Users/avrcodev/**)",
       "Bash(ssh -T git@github.com)",
-      "Bash(pnpm install:*)"
+      "Bash(pnpm install:*)",
+      "Bash(pnpm --filter @wa/bird-client run build)"
     ]
   }
 }
