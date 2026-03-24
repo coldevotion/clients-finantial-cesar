@@ -1,3 +1,8 @@
+networks:
+  coolify:
+    external: true
+    name: coolify
+
 services:
 
   # ─── MIGRATE (one-shot) ────────────────────────────────────────────────────
@@ -8,6 +13,8 @@ services:
       dockerfile: apps/api/Dockerfile
     entrypoint: ["node", "./node_modules/prisma/build/index.js", "migrate", "deploy", "--schema=./prisma/schema.prisma"]
     restart: "no"
+    networks:
+      - coolify
     environment:
       DATABASE_URL: ${DATABASE_URL}
 
@@ -21,6 +28,8 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+    networks:
+      - coolify
     environment:
       NODE_ENV: production
       PORT: 3001
@@ -63,6 +72,8 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+    networks:
+      - coolify
     environment:
       NODE_ENV: production
       DATABASE_URL: ${DATABASE_URL}
@@ -84,6 +95,8 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    networks:
+      - coolify
     environment:
       NEXT_PUBLIC_API_URL: ${API_URL}
       NEXT_PUBLIC_WS_URL: ${WS_URL}
