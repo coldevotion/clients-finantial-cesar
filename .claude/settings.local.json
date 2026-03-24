@@ -27,7 +27,8 @@
       "Bash(grep -v \"^$\")",
       "Bash(npx nest:*)",
       "Bash(echo \"EXIT:$?\")",
-      "Bash(xargs cat:*)"
+      "Bash(xargs cat:*)",
+      "Bash(pnpm --filter @wa/web run build)"
     ]
   }
 }

@@ -52,7 +52,7 @@ export default function FlowCanvas({ initialNodes, initialEdges, onSave, isSavin
     selectNode, addNode, deleteNode, selectedNodeId, markClean,
   } = useFlowBuilderStore();
 
-  const autoSaveRef = useRef<ReturnType<typeof setTimeout>>();
+  const autoSaveRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   /* Initialize from props */
   useEffect(() => {

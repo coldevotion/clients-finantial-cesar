@@ -33,7 +33,7 @@ const PLAN_COLORS = {
 };
 
 const EMPTY_FORM = {
-  name: '', slug: '', plan: 'STARTER' as const,
+  name: '', slug: '', plan: 'STARTER' as 'STARTER' | 'GROWTH' | 'ENTERPRISE',
   document: '', email: '', phone: '',
   contactLimit: 1000, omitActive: true, notes: '',
 };
