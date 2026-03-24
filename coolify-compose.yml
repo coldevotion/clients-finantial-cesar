@@ -1,15 +1,52 @@
 services:
 
+  # ─── INFRAESTRUCTURA ────────────────────────────────────────────────────────
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: wa_campaigns
+      POSTGRES_USER: ${POSTGRES_USER:-wauser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-wauser} -d wa_campaigns"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD}
+      --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # ─── MIGRATE (one-shot) ────────────────────────────────────────────────────
 
   migrate:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    entrypoint: ["sh", "-c", "npx prisma migrate deploy --schema=./prisma/schema.prisma"]
+    entrypoint: ["node", "./node_modules/prisma/build/index.js", "migrate", "deploy", "--schema=./prisma/schema.prisma"]
     restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
     environment:
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-wauser}:${POSTGRES_PASSWORD}@postgres:5432/wa_campaigns
 
   # ─── API ──────────────────────────────────────────────────────────────────
 
@@ -21,11 +58,13 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+      redis:
+        condition: service_healthy
     environment:
       NODE_ENV: production
       PORT: 3001
-      DATABASE_URL: ${DATABASE_URL}
-      REDIS_URL: ${REDIS_URL}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-wauser}:${POSTGRES_PASSWORD}@postgres:5432/wa_campaigns
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
       JWT_SECRET: ${JWT_SECRET}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
@@ -63,15 +102,17 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+      redis:
+        condition: service_healthy
     environment:
       NODE_ENV: production
-      DATABASE_URL: ${DATABASE_URL}
-      REDIS_URL: ${REDIS_URL}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-wauser}:${POSTGRES_PASSWORD}@postgres:5432/wa_campaigns
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
     volumes:
       - api_uploads:/app/uploads
 
-  # ─── WEB ──────────────────────────────────────────────────────────────────
+  # ─── WEB (Next.js) ────────────────────────────────────────────────────────
 
   web:
     build:
@@ -92,4 +133,6 @@ services:
       - "3000:3000"
 
 volumes:
+  postgres_data:
+  redis_data:
   api_uploads:
