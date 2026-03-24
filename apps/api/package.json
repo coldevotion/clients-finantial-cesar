@@ -19,6 +19,7 @@
     "@nestjs/bullmq": "^10.2.0",
     "@nestjs/microservices": "^10.4.0",
     "@wa/database": "workspace:*",
+    "prisma": "^5.22.0",
     "@wa/types": "workspace:*",
     "@wa/bird-client": "workspace:*",
     "bullmq": "^5.25.0",
