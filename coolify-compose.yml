@@ -1,0 +1,95 @@
+services:
+
+  # ─── MIGRATE (one-shot) ────────────────────────────────────────────────────
+
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    entrypoint: ["sh", "-c", "npx prisma migrate deploy --schema=./prisma/schema.prisma"]
+    restart: "no"
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+
+  # ─── API ──────────────────────────────────────────────────────────────────
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASS: ${SMTP_PASS}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Provired}
+      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS}
+      BIRD_WEBHOOK_SECRET: ${BIRD_WEBHOOK_SECRET}
+      WEB_URL: ${WEB_URL}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@provired.com}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD}
+      SEED_TENANT_NAME: ${SEED_TENANT_NAME:-Provired}
+      SEED_TENANT_SLUG: ${SEED_TENANT_SLUG:-provired}
+    ports:
+      - "3001:3001"
+    volumes:
+      - api_uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ─── WORKER ───────────────────────────────────────────────────────────────
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+    volumes:
+      - api_uploads:/app/uploads
+
+  # ─── WEB ──────────────────────────────────────────────────────────────────
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${API_URL}
+        NEXT_PUBLIC_WS_URL: ${WS_URL}
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      NEXT_PUBLIC_API_URL: ${API_URL}
+      NEXT_PUBLIC_WS_URL: ${WS_URL}
+      NEXT_PUBLIC_MOCK_MODE: "false"
+    ports:
+      - "3000:3000"
+
+volumes:
+  api_uploads:
