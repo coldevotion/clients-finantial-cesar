@@ -42,6 +42,9 @@ COPY --from=builder /app/apps/api/dist ./dist
 # node_modules with all workspace deps resolved (no symlinks)
 COPY --from=builder /prod/api/node_modules ./node_modules
 
+# Generated Prisma client (native binaries for linux-musl-openssl-3.0.x)
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+
 # Prisma schema + migrations (needed for prisma migrate deploy)
 COPY --from=builder /app/packages/database/prisma ./prisma
 

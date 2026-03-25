@@ -34,6 +34,7 @@ RUN apk add --no-cache openssl
 
 COPY --from=builder /app/apps/worker/dist ./dist
 COPY --from=builder /prod/worker/node_modules ./node_modules
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/packages/database/prisma ./prisma
 
 EXPOSE 3002
