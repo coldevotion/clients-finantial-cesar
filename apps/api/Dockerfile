@@ -28,11 +28,6 @@ RUN pnpm --filter @wa/api run build
 # Create clean production deployment (resolves workspace symlinks into real files)
 RUN pnpm --filter @wa/api deploy --prod /prod/api
 
-# Re-generate Prisma client into the production node_modules (alpine native binaries)
-RUN cp -r packages/database/prisma /tmp/prisma-schema && \
-    cd /prod/api && \
-    node node_modules/prisma/build/index.js generate --schema=/tmp/prisma-schema/schema.prisma
-
 # ─── Runner ──────────────────────────────────────────────────────────────────
 FROM node:20-alpine AS runner
 WORKDIR /app
@@ -44,11 +39,14 @@ RUN apk add --no-cache openssl
 # App compiled output
 COPY --from=builder /app/apps/api/dist ./dist
 
-# node_modules with all workspace deps resolved + generated Prisma client
+# node_modules with all workspace deps resolved
 COPY --from=builder /prod/api/node_modules ./node_modules
 
-# Prisma schema + migrations (needed for prisma migrate deploy)
+# Prisma schema + migrations
 COPY --from=builder /app/packages/database/prisma ./prisma
+
+# Generate Prisma client for this OS (linux-musl-openssl-3.0.x)
+RUN node node_modules/prisma/build/index.js generate --schema=./prisma/schema.prisma
 
 # Copy entrypoint script
 COPY --from=builder /app/apps/api/entrypoint.sh ./entrypoint.sh
