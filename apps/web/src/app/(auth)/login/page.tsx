@@ -6,12 +6,15 @@ import Link from 'next/link';
 import { api } from '@/lib/api-client';
 import { useAuthStore } from '@/store/auth.store';
 import { TwoFactorPrompt } from '@/components/auth/TwoFactorPrompt';
+import { ProViredLogo } from '@/components/ProViredLogo';
+import { Eye, EyeOff, ArrowRight } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
   const { setTokens } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [pending2fa, setPending2fa] = useState<{ tempToken: string } | null>(null);
@@ -49,45 +52,111 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Iniciar sesión</h1>
-        <p className="text-sm text-gray-500 mb-8">Bienvenido de vuelta</p>
+    <div className="w-full max-w-md px-4">
+      <div className="relative bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 overflow-hidden animate-slide-up">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary-500 via-primary-400 to-accent" />
 
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-            {error}
+        <div className="px-8 pt-10 pb-8">
+          <div className="flex justify-center mb-8">
+            <ProViredLogo variant="full" size={40} />
           </div>
-        )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Correo electrónico</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
-              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-              placeholder="tu@empresa.com" />
-          </div>
-          <div>
-            <div className="flex justify-between mb-1">
-              <label className="block text-sm font-medium text-gray-700">Contraseña</label>
-              <Link href="/forgot-password" className="text-xs text-primary-600 hover:underline">
-                ¿Olvidaste tu contraseña?
-              </Link>
+          <h1 className="text-2xl font-bold text-text-primary text-center mb-1">
+            Iniciar sesión
+          </h1>
+          <p className="text-sm text-text-secondary text-center mb-8">
+            Bienvenido de vuelta
+          </p>
+
+          {error && (
+            <div className="mb-5 p-3.5 bg-danger/8 border border-danger/20 rounded-xl text-sm text-danger flex items-center gap-2.5" role="alert">
+              <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+              {error}
             </div>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required
-              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-              placeholder="••••••••" />
-          </div>
-          <button type="submit" disabled={loading}
-            className="w-full bg-primary-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-primary-700 disabled:opacity-50 transition-colors">
-            {loading ? 'Entrando...' : 'Iniciar sesión'}
-          </button>
-        </form>
+          )}
 
-        <p className="text-center text-sm text-gray-500 mt-6">
-          ¿No tienes cuenta?{' '}
-          <Link href="/register" className="text-primary-600 font-medium hover:underline">Regístrate</Link>
-        </p>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="space-y-1.5">
+              <label htmlFor="email" className="block text-sm font-medium text-text-primary">
+                Correo electrónico
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+                className="input"
+                placeholder="tu@empresa.com"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center">
+                <label htmlFor="password" className="block text-sm font-medium text-text-primary">
+                  Contraseña
+                </label>
+                <Link
+                  href="/forgot-password"
+                  className="text-xs text-primary-500 hover:text-primary-600 font-medium transition-colors"
+                >
+                  ¿Olvidaste tu contraseña?
+                </Link>
+              </div>
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                  className="input pr-10"
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary transition-colors cursor-pointer"
+                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn-primary w-full justify-center py-2.5 text-sm group"
+            >
+              {loading ? (
+                <>
+                  <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Entrando...
+                </>
+              ) : (
+                <>
+                  Iniciar sesión
+                  <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                </>
+              )}
+            </button>
+          </form>
+
+          <p className="text-center text-sm text-text-secondary mt-7">
+            ¿No tienes cuenta?{' '}
+            <Link href="/register" className="text-primary-500 font-semibold hover:text-primary-600 transition-colors">
+              Regístrate
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );
