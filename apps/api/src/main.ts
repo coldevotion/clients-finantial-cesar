@@ -23,7 +23,7 @@ async function bootstrap() {
   app.useGlobalInterceptors(new ResponseInterceptor());
 
   app.enableCors({
-    origin: process.env.WEB_URL ?? 'http://localhost:3000',
+    origin: true,
     credentials: true,
   });
 
