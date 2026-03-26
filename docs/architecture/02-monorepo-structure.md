@@ -103,9 +103,7 @@ wa-campaigns-platform/
 ├── docs/                           ← Esta documentación
 │
 ├── infra/
-│   ├── docker-compose.yml          ← Dev: PG + Redis + Kafka + ClickHouse
-│   ├── k8s/                        ← Manifests Kubernetes (prod)
-│   └── terraform/                  ← IaC (opcional fase 2)
+│   └── docker-compose.yml          ← Dev: PG + Redis + Kafka + ClickHouse
 │
 ├── turbo.json                      ← Pipeline Turborepo
 ├── pnpm-workspace.yaml
