@@ -45,6 +45,17 @@ COPY --from=builder /prod/api/node_modules ./node_modules
 # Prisma schema + migrations (for migrate deploy at startup)
 COPY --from=builder /app/packages/database/prisma ./prisma
 
+# Fix: pnpm deploy corrupts @prisma/client by stripping runtime/ files
+# Install fresh @prisma/client and restore runtime to the pnpm virtual store
+RUN npm install @prisma/client@5.22.0 --ignore-scripts --no-package-lock --quiet 2>/dev/null; \
+    for dir in $(find /app/node_modules/.pnpm -path "*/@prisma/client" -type d 2>/dev/null); do \
+        cp -rf /app/node_modules/@prisma/client/runtime "$dir/"; \
+        STORE_NM=$(dirname "$(dirname "$dir")"); \
+        mkdir -p "$STORE_NM/.prisma"; \
+        cp -rf /app/node_modules/.prisma "$STORE_NM/"; \
+    done; \
+    rm -f package.json package-lock.json
+
 # Entrypoint (runs migrations + seed + starts server)
 COPY --from=builder /app/apps/api/entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
