@@ -10,7 +10,7 @@ USER_COUNT=$(node -e "
 const { PrismaClient } = require('@prisma/client');
 const p = new PrismaClient({ log: [] });
 p.user.count().then(n => { process.stdout.write(String(n)); p.\$disconnect(); }).catch(() => { process.stdout.write('1'); });
-" 2>/dev/null)
+" 2>/dev/null) || USER_COUNT="1"
 
 if [ "$USER_COUNT" = "0" ]; then
   echo "▶ No users found — running seed..."
