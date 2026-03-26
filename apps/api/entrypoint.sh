@@ -18,10 +18,10 @@ if [ "$USER_COUNT" = "0" ]; then
   SEED_ADMIN_PASSWORD="${SEED_ADMIN_PASSWORD}" \
   SEED_TENANT_NAME="${SEED_TENANT_NAME:-Provired}" \
   SEED_TENANT_SLUG="${SEED_TENANT_SLUG:-provired}" \
-  node dist/seed.js
+  node dist/apps/api/src/seed.js
 else
   echo "▶ Database already seeded (${USER_COUNT} users found), skipping."
 fi
 
 echo "▶ Starting API server..."
-exec node dist/main
+exec node dist/apps/api/src/main
