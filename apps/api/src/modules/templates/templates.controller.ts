@@ -34,8 +34,4 @@ export class TemplatesController {
     return this.templatesService.remove(tenantId, id);
   }
 
-  @Post(':id/sync')
-  sync(@CurrentTenantId() tenantId: string, @Param('id') id: string) {
-    return this.templatesService.syncWithBird(tenantId, id);
-  }
 }

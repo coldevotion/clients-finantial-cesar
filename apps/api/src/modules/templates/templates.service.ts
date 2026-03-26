@@ -1,11 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { prisma } from '@wa/database';
-import { TenantsService } from '../tenants/tenants.service';
-import { BirdTemplatesService } from '@wa/bird-client';
 
 @Injectable()
 export class TemplatesService {
-  constructor(private readonly tenantsService: TenantsService) {}
+  constructor() {}
 
   list(tenantId: string) {
     return prisma.template.findMany({
@@ -42,25 +40,4 @@ export class TemplatesService {
     return prisma.template.delete({ where: { id } });
   }
 
-  async syncWithBird(tenantId: string, id: string) {
-    const template = await this.findOne(tenantId, id);
-    const channel = await this.tenantsService.getChannel(tenantId);
-
-    const birdService = new BirdTemplatesService({
-      workspaceId: channel.birdWorkspaceId,
-      apiKey: channel.birdApiKey,
-      channelId: channel.birdChannelId,
-    });
-
-    const birdTemplate = await birdService.create({
-      name: template.name,
-      defaultLocale: template.language,
-      components: template.components as unknown[],
-    });
-
-    return prisma.template.update({
-      where: { id },
-      data: { birdTemplateId: birdTemplate.id, status: 'PENDING' },
-    });
-  }
 }
