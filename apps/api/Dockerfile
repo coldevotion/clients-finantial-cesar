@@ -8,56 +8,47 @@ RUN corepack enable && corepack prepare pnpm@9 --activate
 FROM base AS builder
 WORKDIR /app
 
-# Copy everything
 COPY . .
-
-# Install all deps (including devDeps for build)
 RUN pnpm install --frozen-lockfile
 
 # Build packages in dependency order
 RUN pnpm --filter @wa/types run build
 RUN pnpm --filter @wa/bird-client run build
 RUN pnpm --filter @wa/flow-engine run build
-# Generate Prisma client for linux-musl-openssl-3.0.x (Alpine)
 RUN pnpm --filter @wa/database run generate
 RUN pnpm --filter @wa/database run build
-
-# Build API
 RUN pnpm --filter @wa/api run build
 
-# Create clean production deployment (resolves workspace symlinks into real files)
+# Production deployment (resolves workspace symlinks)
 RUN pnpm --filter @wa/api deploy --prod /prod/api
 
-# Generate Prisma client into the production node_modules
-# (copies schema first, uses dummy DATABASE_URL so prisma can parse the schema)
-RUN cp -r packages/database/prisma /prod/api/prisma && \
-    cd /prod/api && \
-    DATABASE_URL="postgresql://x:x@localhost:5432/x" \
-    node node_modules/prisma/build/index.js generate --schema=./prisma/schema.prisma && \
-    rm -rf /prod/api/prisma
+# Copy Prisma client binary from pnpm virtual store to production deployment
+RUN PRISMA_PATH=$(find /app/node_modules/.pnpm -path "*/.prisma/client" -type d 2>/dev/null | head -1) && \
+    if [ -n "$PRISMA_PATH" ]; then \
+        mkdir -p /prod/api/node_modules/.prisma && \
+        cp -r "$PRISMA_PATH" /prod/api/node_modules/.prisma/client; \
+    fi
 
 # ─── Runner ──────────────────────────────────────────────────────────────────
 FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
-# Prisma needs openssl
 RUN apk add --no-cache openssl
 
-# App compiled output
+# Compiled API
 COPY --from=builder /app/apps/api/dist ./dist
 
-# node_modules with generated Prisma client (includes .prisma/client binary)
+# Production node_modules (workspace symlinks resolved + Prisma binary)
 COPY --from=builder /prod/api/node_modules ./node_modules
 
-# Prisma schema + migrations (for entrypoint.sh migrate deploy)
+# Prisma schema + migrations (for migrate deploy at startup)
 COPY --from=builder /app/packages/database/prisma ./prisma
 
-# Copy entrypoint script
+# Entrypoint (runs migrations + seed + starts server)
 COPY --from=builder /app/apps/api/entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
 
-# Upload directory
 RUN mkdir -p /app/uploads
 
 EXPOSE 3001
