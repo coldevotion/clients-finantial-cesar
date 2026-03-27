@@ -1,11 +1,11 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 const MOCK_MODE = process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
 
-async function getStoredToken(): Promise<string | null> {
-  if (typeof window === 'undefined') return null;
+function getStoredToken(): string | null {
+  if (typeof document === 'undefined') return null;
   try {
-    const stored = JSON.parse(localStorage.getItem('wa-auth') ?? '{}');
-    return stored?.state?.accessToken ?? null;
+    const match = document.cookie.match(/(?:^|;\s*)wa-access-token=([^;]+)/);
+    return match ? decodeURIComponent(match[1]) : null;
   } catch {
     return null;
   }
@@ -31,7 +31,7 @@ async function request<T>(path: string, options?: RequestInit & { _query?: Recor
     return data as T;
   }
 
-  const token = await getStoredToken();
+  const token = getStoredToken();
 
   const isFormData = options?.body instanceof FormData;
 
