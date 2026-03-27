@@ -1,4 +1,4 @@
-import { encryptBody, decryptResponse, resetSession } from './crypto-client';
+import { encryptBody, decryptResponse, resetSession, getClientPublicKey } from './crypto-client';
 import type { EncryptedPayload } from '@wa/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
@@ -19,6 +19,16 @@ function getStoredToken(): string | null {
   } catch {
     return null;
   }
+}
+
+// crypto.subtle solo disponible en contextos seguros (HTTPS o localhost).
+// En HTTP puro existe `crypto` pero `crypto.subtle` es undefined.
+function isCryptoAvailable(): boolean {
+  return (
+    typeof crypto !== 'undefined' &&
+    crypto.subtle != null &&
+    typeof crypto.subtle.encrypt === 'function'
+  );
 }
 
 async function request<T>(
@@ -47,24 +57,30 @@ async function request<T>(
   }
 
   const token = getStoredToken();
-  const useCrypto = !isPlainPath(path) && typeof crypto !== 'undefined';
-  const method = options?.method ?? 'GET';
+  const useCrypto = !isPlainPath(path) && isCryptoAvailable();
   const isFormData = options?.body instanceof FormData;
   const hasBody = options?.body != null;
 
   let body = options?.body;
   const extraHeaders: Record<string, string> = {};
 
-  // ── Cifrar body si corresponde (POST/PUT/PATCH con body JSON) ──────────────
-  if (useCrypto && hasBody && !isFormData) {
-    const raw = typeof body === 'string' ? JSON.parse(body) : body;
-    const { payload, clientPublicKey } = await encryptBody(raw);
-    body = JSON.stringify(payload);
-    extraHeaders['X-Client-Key'] = clientPublicKey;
-  } else if (useCrypto && !isFormData) {
-    // GET / DELETE sin body: igualmente enviamos la clave para que el servidor cifre la respuesta
-    const { clientPublicKey } = await encryptBody(null).catch(() => ({ clientPublicKey: '' }));
-    if (clientPublicKey) extraHeaders['X-Client-Key'] = clientPublicKey;
+  if (useCrypto) {
+    if (hasBody && !isFormData) {
+      // ── POST / PUT / PATCH: cifrar body ─────────────────────────────────────
+      // Si falla (p.ej. servidor no disponible), el error se propaga al caller
+      const raw = typeof body === 'string' ? JSON.parse(body as string) : body;
+      const { payload, clientPublicKey } = await encryptBody(raw);
+      body = JSON.stringify(payload);
+      extraHeaders['X-Client-Key'] = clientPublicKey;
+    } else if (!isFormData) {
+      // ── GET / DELETE: no hay body que cifrar, pero sí enviamos la key para
+      // que el servidor cifre la respuesta con nuestra clave de sesión ────────
+      const clientPublicKey = await getClientPublicKey().catch((err: unknown) => {
+        console.warn('[crypto] Session init failed, request will be plain text:', err);
+        return '';
+      });
+      if (clientPublicKey) extraHeaders['X-Client-Key'] = clientPublicKey;
+    }
   }
 
   const res = await fetch(`${API_URL}/api${fullPath}`, {
@@ -78,7 +94,7 @@ async function request<T>(
     },
   });
 
-  // ── 401: token expirado → refresh y reintentar ─────────────────────────────
+  // ── 401: token expirado o sesión crypto inválida ──────────────────────────
   if (res.status === 401 && !isRetry && typeof window !== 'undefined') {
     const body401 = await res.json().catch(() => ({}));
 
@@ -102,11 +118,13 @@ async function request<T>(
 
   const json = await res.json();
 
-  // ── Descifrar respuesta si viene cifrada ───────────────────────────────────
-  // Respuesta cifrada: { iv: string, data: string }  (EncryptedPayload directo, sin wrapper)
-  // Respuesta plana:   { data: T }  (ResponseInterceptor wrapper)
+  // ── Descifrar respuesta si viene cifrada ──────────────────────────────────
+  // El CryptoInterceptor cifra { data: actualData } (ya envuelto por ResponseInterceptor)
+  // La respuesta cifrada llega como: { iv: string, data: string } (EncryptedPayload al top level)
+  // La respuesta plana llega como:   { data: T }
   if (useCrypto && json && typeof json.iv === 'string' && typeof json.data === 'string') {
-    const decrypted = await decryptResponse(json as EncryptedPayload) as { data: T };
+    // Descifrar → obtenemos { data: T } (wrapper del ResponseInterceptor)
+    const decrypted = (await decryptResponse(json as EncryptedPayload)) as { data: T };
     return decrypted.data;
   }
 

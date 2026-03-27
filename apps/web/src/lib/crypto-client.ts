@@ -81,6 +81,13 @@ async function buildSession(): Promise<CryptoSession> {
   return { aesKey, clientPublicKeyBase64 };
 }
 
+// Retorna solo la clave pública del cliente para el header X-Client-Key
+// sin necesidad de cifrar nada. Usado en GET/DELETE.
+export async function getClientPublicKey(): Promise<string> {
+  const { clientPublicKeyBase64 } = await initSession();
+  return clientPublicKeyBase64;
+}
+
 export async function initSession(): Promise<CryptoSession> {
   if (session) return session;
   if (initPromise) return initPromise;
