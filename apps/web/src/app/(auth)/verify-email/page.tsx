@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api-client';
 import Link from 'next/link';
-import { ProViredLogo } from '@/components/ProViredLogo';
+import { CobrixLogo } from '@/components/CobrixLogo';
 import { CheckCircle, XCircle, Mail, ArrowRight } from 'lucide-react';
 
 function VerifyEmailContent() {
@@ -40,7 +40,7 @@ function VerifyEmailContent() {
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary-500 via-primary-400 to-accent" />
         <div className="px-8 pt-10 pb-8 text-center">
           <div className="flex justify-center mb-6">
-            <ProViredLogo variant="full" size={36} />
+            <CobrixLogo variant="full" size={36} />
           </div>
 
           {status === 'loading' && (

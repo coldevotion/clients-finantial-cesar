@@ -3,7 +3,7 @@
 
 export const MOCK_USER = {
   id: 'mock-user-1',
-  email: 'demo@provired.com',
+  email: 'demo@cobrix.com',
   name: 'Demo User',
   role: 'OWNER',
   tenantId: 'mock-tenant-1',
@@ -45,7 +45,7 @@ export const MOCK_RESPONSES: Record<string, unknown> = {
       headerType: 'IMAGE', imageUrl: 'https://placehold.co/600x300/267EF0/white?text=Bienvenido',
       bodyText: 'Bienvenido {{1}} a nuestros servicios. Estamos aquí para ayudarte.',
       footerText: 'Provired',
-      buttons: [{ type: 'URL', text: 'Ver mi cuenta', url: 'https://app.provired.com' }],
+      buttons: [{ type: 'URL', text: 'Ver mi cuenta', url: 'https://app.cobrix.com' }],
     },
     {
       id: 't3', name: 'recordatorio_pago', category: 'UTILITY', language: 'es', status: 'PENDING',
@@ -65,7 +65,7 @@ export const MOCK_RESPONSES: Record<string, unknown> = {
       headerType: 'VIDEO', videoUrl: 'https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4',
       bodyText: '¡Aprovecha el 20% de descuento en agosto! Solo hasta el 31.',
       footerText: 'Válido hasta 31-ago-2025',
-      buttons: [{ type: 'URL', text: 'Ver oferta', url: 'https://provired.com/promo' }],
+      buttons: [{ type: 'URL', text: 'Ver oferta', url: 'https://cobrix.com/promo' }],
     },
   ],
 
@@ -245,10 +245,10 @@ export const MOCK_RESPONSES: Record<string, unknown> = {
 
   // ─── Admin: Users list ──────────────────────────────────────────────────────
   'GET /users': [
-    { id: 'u1', name: 'Demo Admin',   email: 'admin@provired.com',    role: 'TENANT_ADMIN',    tenantId: 'cl1', isEmailVerified: true,  twoFactorEnabled: true,  lastLoginAt: new Date().toISOString(),                            tenant: { id: 'cl1', name: 'Banco Nacional SA',    slug: 'banco-nacional' } },
+    { id: 'u1', name: 'Demo Admin',   email: 'admin@cobrix.com',    role: 'TENANT_ADMIN',    tenantId: 'cl1', isEmailVerified: true,  twoFactorEnabled: true,  lastLoginAt: new Date().toISOString(),                            tenant: { id: 'cl1', name: 'Banco Nacional SA',    slug: 'banco-nacional' } },
     { id: 'u2', name: 'Carlos Ops',   email: 'carlos@banconal.com',   role: 'TENANT_OPERATOR', tenantId: 'cl1', isEmailVerified: true,  twoFactorEnabled: false, lastLoginAt: new Date(Date.now() - 86400 * 1000).toISOString(),  tenant: { id: 'cl1', name: 'Banco Nacional SA',    slug: 'banco-nacional' } },
     { id: 'u3', name: 'Laura Viewer', email: 'laura@banconal.com',    role: 'TENANT_VIEWER',   tenantId: 'cl1', isEmailVerified: true,  twoFactorEnabled: false, lastLoginAt: null,                                              tenant: { id: 'cl1', name: 'Banco Nacional SA',    slug: 'banco-nacional' } },
-    { id: 'u4', name: 'Super Admin',  email: 'super@provired.com',    role: 'SUPER_ADMIN',     tenantId: null,  isEmailVerified: true,  twoFactorEnabled: true,  lastLoginAt: new Date().toISOString(),                            tenant: null },
+    { id: 'u4', name: 'Super Admin',  email: 'super@cobrix.com',    role: 'SUPER_ADMIN',     tenantId: null,  isEmailVerified: true,  twoFactorEnabled: true,  lastLoginAt: new Date().toISOString(),                            tenant: null },
     { id: 'u5', name: 'Ana Créditos', email: 'ana@creditosrapidos.co', role: 'TENANT_ADMIN',   tenantId: 'cl2', isEmailVerified: true,  twoFactorEnabled: false, lastLoginAt: new Date(Date.now() - 2 * 86400 * 1000).toISOString(), tenant: { id: 'cl2', name: 'Créditos Rápidos SAS', slug: 'creditos-rapidos' } },
   ],
 

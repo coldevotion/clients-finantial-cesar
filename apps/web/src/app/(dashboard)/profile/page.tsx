@@ -5,10 +5,65 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api-client';
 import { TwoFactorSetup } from '@/components/auth/TwoFactorSetup';
 import { SessionsList } from '@/components/auth/SessionsList';
+import { User, Shield, Monitor, CheckCircle2, AlertCircle } from 'lucide-react';
+
+// ─── Avatar with initials ─────────────────────────────────────────────────────
+
+function Avatar({ name, email }: { name?: string; email?: string }) {
+  const source = name || email || '?';
+  const initials = source
+    .split(/[\s@]+/)
+    .slice(0, 2)
+    .map((s: string) => s[0]?.toUpperCase() ?? '')
+    .join('');
+
+  return (
+    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center flex-shrink-0 shadow-lg">
+      <span className="text-xl font-bold text-white">{initials}</span>
+    </div>
+  );
+}
+
+// ─── Tab button ───────────────────────────────────────────────────────────────
+
+function TabButton({
+  active, icon: Icon, label, onClick,
+}: { active: boolean; icon: React.FC<any>; label: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-150 cursor-pointer
+        ${active
+          ? 'bg-navy-700 text-white'
+          : 'text-slate-400 hover:text-slate-200 hover:bg-navy-800'
+        }`}
+    >
+      <Icon size={15} />
+      <span className="hidden sm:inline">{label}</span>
+    </button>
+  );
+}
+
+// ─── Field ────────────────────────────────────────────────────────────────────
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">
+        {label}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ProfilePage() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'sessions'>('profile');
+  const [name, setName] = useState('');
+  const [nameInitialized, setNameInitialized] = useState(false);
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirm: '' });
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
@@ -16,6 +71,13 @@ export default function ProfilePage() {
   const { data: profile } = useQuery({
     queryKey: ['profile'],
     queryFn: () => api.get<any>('/users/me'),
+    select: (data) => {
+      if (!nameInitialized && data?.name != null) {
+        setName(data.name);
+        setNameInitialized(true);
+      }
+      return data;
+    },
   });
 
   const updateProfile = useMutation({
@@ -49,98 +111,147 @@ export default function ProfilePage() {
   }
 
   const tabs = [
-    { key: 'profile', label: 'Perfil' },
-    { key: 'security', label: 'Seguridad' },
-    { key: 'sessions', label: 'Sesiones activas' },
-  ];
+    { key: 'profile',  label: 'Perfil',           icon: User    },
+    { key: 'security', label: 'Seguridad',         icon: Shield  },
+    { key: 'sessions', label: 'Sesiones activas',  icon: Monitor },
+  ] as const;
 
   return (
-    <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Mi cuenta</h1>
+    <div className="max-w-2xl mx-auto space-y-6">
 
-      {/* Tabs */}
-      <div className="flex border-b border-gray-200 mb-6">
-        {tabs.map((tab) => (
-          <button key={tab.key} onClick={() => setActiveTab(tab.key as any)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-              activeTab === tab.key
-                ? 'border-primary-600 text-primary-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}>
-            {tab.label}
-          </button>
+      {/* ── Header card ─────────────────────────────────────────── */}
+      <div className="bg-navy-900 rounded-2xl border border-navy-700 px-6 py-5 flex items-center gap-5">
+        <Avatar name={profile?.name} email={profile?.email} />
+        <div className="min-w-0">
+          <h1 className="text-lg font-bold text-white truncate">
+            {profile?.name || 'Sin nombre'}
+          </h1>
+          <p className="text-sm text-slate-400 truncate">{profile?.email}</p>
+          <div className="flex flex-wrap items-center gap-2 mt-2">
+            {profile?.isEmailVerified ? (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
+                <CheckCircle2 size={10} />
+                Email verificado
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/25">
+                <AlertCircle size={10} />
+                Email no verificado
+              </span>
+            )}
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-primary-500/15 text-primary-400 border border-primary-500/25">
+              {profile?.role}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Tabs ────────────────────────────────────────────────── */}
+      <div className="flex gap-1 p-1 bg-navy-900 border border-navy-700 rounded-xl">
+        {tabs.map(tab => (
+          <TabButton
+            key={tab.key}
+            active={activeTab === tab.key}
+            icon={tab.icon}
+            label={tab.label}
+            onClick={() => setActiveTab(tab.key)}
+          />
         ))}
       </div>
 
-      {/* Perfil */}
+      {/* ── Perfil ──────────────────────────────────────────────── */}
       {activeTab === 'profile' && profile && (
-        <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
-            <input type="text" defaultValue={profile.name ?? ''} id="name"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+        <div className="bg-navy-900 border border-navy-700 rounded-2xl p-6 space-y-5">
+          <Field label="Nombre">
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="input"
+              placeholder="Tu nombre completo"
+            />
+          </Field>
+          <Field label="Correo electrónico">
+            <input
+              type="email"
+              value={profile.email}
+              disabled
+              className="input opacity-50 cursor-not-allowed"
+            />
+          </Field>
+          <div className="pt-1">
+            <button
+              onClick={() => updateProfile.mutate({ name })}
+              disabled={updateProfile.isPending}
+              className="btn-primary text-sm disabled:opacity-50"
+            >
+              {updateProfile.isPending ? 'Guardando...' : 'Guardar cambios'}
+            </button>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Correo electrónico</label>
-            <input type="email" value={profile.email} disabled
-              className="w-full border border-gray-100 rounded-lg px-3 py-2.5 text-sm bg-gray-50 text-gray-500 cursor-not-allowed" />
-          </div>
-          <div className="flex items-center gap-2">
-            <span className={`text-xs px-2 py-1 rounded-full ${profile.isEmailVerified ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-              {profile.isEmailVerified ? 'Email verificado' : 'Email no verificado'}
-            </span>
-            <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">
-              {profile.role}
-            </span>
-          </div>
-          <button
-            onClick={() => {
-              const name = (document.getElementById('name') as HTMLInputElement)?.value;
-              updateProfile.mutate({ name });
-            }}
-            className="bg-primary-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary-700">
-            Guardar cambios
-          </button>
         </div>
       )}
 
-      {/* Seguridad */}
+      {/* ── Seguridad ───────────────────────────────────────────── */}
       {activeTab === 'security' && (
-        <div className="space-y-6">
-          {/* Cambiar contraseña */}
-          <div className="bg-white border border-gray-200 rounded-xl p-6">
-            <h3 className="font-semibold text-gray-900 mb-4">Cambiar contraseña</h3>
+        <div className="space-y-5">
+          <div className="bg-navy-900 border border-navy-700 rounded-2xl p-6">
+            <h3 className="text-sm font-semibold text-white mb-5">Cambiar contraseña</h3>
+
             {passwordError && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{passwordError}</div>
+              <div className="mb-4 p-3 bg-danger/10 border border-danger/20 rounded-xl text-sm text-danger flex items-center gap-2">
+                <AlertCircle size={14} />
+                {passwordError}
+              </div>
             )}
             {passwordSuccess && (
-              <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">{passwordSuccess}</div>
+              <div className="mb-4 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-sm text-emerald-400 flex items-center gap-2">
+                <CheckCircle2 size={14} />
+                {passwordSuccess}
+              </div>
             )}
-            <form onSubmit={handlePasswordChange} className="space-y-3">
+
+            <form onSubmit={handlePasswordChange} className="space-y-4">
               {(['currentPassword', 'newPassword', 'confirm'] as const).map((field) => (
-                <div key={field}>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {field === 'currentPassword' ? 'Contraseña actual' : field === 'newPassword' ? 'Nueva contraseña' : 'Confirmar nueva contraseña'}
-                  </label>
-                  <input type="password" value={passwordForm[field]}
-                    onChange={(e) => setPasswordForm((f) => ({ ...f, [field]: e.target.value }))}
+                <Field
+                  key={field}
+                  label={
+                    field === 'currentPassword' ? 'Contraseña actual'
+                    : field === 'newPassword'   ? 'Nueva contraseña'
+                    : 'Confirmar nueva contraseña'
+                  }
+                >
+                  <input
+                    type="password"
+                    value={passwordForm[field]}
+                    onChange={(e) => setPasswordForm(f => ({ ...f, [field]: e.target.value }))}
                     minLength={field !== 'currentPassword' ? 8 : undefined}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
-                </div>
+                    className="input"
+                    placeholder="••••••••"
+                  />
+                </Field>
               ))}
-              <button type="submit" disabled={changePassword.isPending}
-                className="bg-primary-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary-700 disabled:opacity-50">
-                Actualizar contraseña
-              </button>
+              <div className="pt-1">
+                <button
+                  type="submit"
+                  disabled={changePassword.isPending}
+                  className="btn-primary text-sm disabled:opacity-50"
+                >
+                  {changePassword.isPending ? 'Actualizando...' : 'Actualizar contraseña'}
+                </button>
+              </div>
             </form>
           </div>
 
-          {/* 2FA */}
-          {profile && <TwoFactorSetup enabled={profile.twoFactorEnabled} onUpdate={() => queryClient.invalidateQueries({ queryKey: ['profile'] })} />}
+          {profile && (
+            <TwoFactorSetup
+              enabled={profile.twoFactorEnabled}
+              onUpdate={() => queryClient.invalidateQueries({ queryKey: ['profile'] })}
+            />
+          )}
         </div>
       )}
 
-      {/* Sesiones */}
+      {/* ── Sesiones ────────────────────────────────────────────── */}
       {activeTab === 'sessions' && <SessionsList />}
     </div>
   );

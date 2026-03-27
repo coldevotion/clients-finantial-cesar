@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api-client';
-import { ProViredLogo } from '@/components/ProViredLogo';
+import { CobrixLogo } from '@/components/CobrixLogo';
 import { ArrowRight, CheckCircle, Mail } from 'lucide-react';
 
 export default function ForgotPasswordPage() {
@@ -51,7 +51,7 @@ export default function ForgotPasswordPage() {
 
         <div className="px-8 pt-10 pb-8">
           <div className="flex justify-center mb-8">
-            <ProViredLogo variant="full" size={40} />
+            <CobrixLogo variant="full" size={40} />
           </div>
 
           <h1 className="text-2xl font-bold text-text-primary text-center mb-1">

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { api } from "@/lib/api-client";
-import { ProViredLogo } from "@/components/ProViredLogo";
+import { CobrixLogo } from "@/components/CobrixLogo";
 import { ShieldCheck, ArrowRight } from "lucide-react";
 
 interface Props {
@@ -42,7 +42,7 @@ export function TwoFactorPrompt({ tempToken, onSuccess, onCancel }: Props) {
 
         <div className="px-8 pt-10 pb-8">
           <div className="flex justify-center mb-6">
-            <ProViredLogo variant="full" size={36} />
+            <CobrixLogo variant="full" size={36} />
           </div>
 
           <div className="flex justify-center mb-4">

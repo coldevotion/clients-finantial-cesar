@@ -17,7 +17,8 @@
   }
 
   body {
-    @apply bg-surface text-text-primary;
+    @apply bg-surface text-text-primary
+           dark:bg-navy-900 dark:text-slate-100;
   }
 
   /* Scrollbar */
@@ -54,7 +55,9 @@
   }
   .btn-secondary {
     @apply btn bg-surface-muted text-text-secondary border border-border
-           hover:bg-border hover:text-text-primary active:scale-[0.97];
+           hover:bg-border hover:text-text-primary active:scale-[0.97]
+           dark:bg-navy-700 dark:text-slate-300 dark:border-navy-600
+           dark:hover:bg-navy-600 dark:hover:text-slate-100;
   }
   .btn-danger {
     @apply btn bg-danger/10 text-danger border border-danger/20 hover:bg-danger/20 active:scale-[0.97];
@@ -65,7 +68,8 @@
 
   /* Card */
   .card {
-    @apply bg-surface-card border border-border rounded-xl shadow-card;
+    @apply bg-surface-card border border-border rounded-xl shadow-card
+           dark:bg-navy-800 dark:border-navy-600;
   }
 
   /* Input base */
@@ -73,7 +77,9 @@
     @apply w-full border border-border rounded-md px-3 py-2.5 text-sm text-text-primary
            bg-white placeholder:text-text-muted
            focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-400
-           transition-colors duration-150;
+           transition-colors duration-150
+           dark:bg-navy-800 dark:border-navy-600 dark:text-slate-100
+           dark:placeholder:text-slate-500 dark:focus:border-primary-500;
   }
 
   /* Badge */

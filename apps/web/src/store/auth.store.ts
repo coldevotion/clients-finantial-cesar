@@ -34,7 +34,7 @@ const MOCK_ROLE = (process.env.NEXT_PUBLIC_MOCK_ROLE ?? 'TENANT_ADMIN') as strin
 
 const MOCK_USER: AuthUser = {
   id: 'mock-user-1',
-  email: 'demo@provired.com',
+  email: 'demo@cobrix.com',
   name: 'Demo Admin',
   role: MOCK_ROLE,
   tenantId: 'mock-tenant-1',

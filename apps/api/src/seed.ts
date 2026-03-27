@@ -3,10 +3,10 @@
  * Called by entrypoint.sh on first boot when no users exist.
  *
  * Environment variables:
- *   SEED_ADMIN_EMAIL    (default: admin@provired.com)
+ *   SEED_ADMIN_EMAIL    (default: admin@cobrix.com)
  *   SEED_ADMIN_PASSWORD (required)
- *   SEED_TENANT_NAME    (default: Provired)
- *   SEED_TENANT_SLUG    (default: provired)
+ *   SEED_TENANT_NAME    (default: Cobrix)
+ *   SEED_TENANT_SLUG    (default: cobrix)
  */
 
 import { prisma } from '@wa/database';
@@ -14,10 +14,10 @@ import * as bcrypt from 'bcrypt';
 
 async function main() {
 
-  const email      = process.env.SEED_ADMIN_EMAIL    ?? 'admin@provired.com';
+  const email      = process.env.SEED_ADMIN_EMAIL    ?? 'admin@cobrix.com';
   const password   = process.env.SEED_ADMIN_PASSWORD ?? '';
-  const tenantName = process.env.SEED_TENANT_NAME    ?? 'Provired';
-  const tenantSlug = process.env.SEED_TENANT_SLUG    ?? 'provired';
+  const tenantName = process.env.SEED_TENANT_NAME    ?? 'Cobrix';
+  const tenantSlug = process.env.SEED_TENANT_SLUG    ?? 'cobrix';
 
   if (!password || password.length < 8) {
     console.error('❌  SEED_ADMIN_PASSWORD is required and must be >= 8 chars');

@@ -5,10 +5,10 @@
  *
  * Environment variables required:
  *   DATABASE_URL       — Postgres connection string
- *   SEED_ADMIN_EMAIL   — email for the SUPER_ADMIN (default: admin@provired.com)
+ *   SEED_ADMIN_EMAIL   — email for the SUPER_ADMIN (default: admin@cobrix.com)
  *   SEED_ADMIN_PASSWORD — password for the SUPER_ADMIN (required, min 8 chars)
- *   SEED_TENANT_NAME   — tenant name (default: Provired)
- *   SEED_TENANT_SLUG   — tenant slug (default: provired)
+ *   SEED_TENANT_NAME   — tenant name (default: Cobrix)
+ *   SEED_TENANT_SLUG   — tenant slug (default: cobrix)
  */
 
 import { PrismaClient } from '@prisma/client';
@@ -17,10 +17,10 @@ import * as bcrypt from 'bcrypt';
 const prisma = new PrismaClient();
 
 async function main() {
-  const email    = process.env.SEED_ADMIN_EMAIL    ?? 'admin@provired.com';
+  const email    = process.env.SEED_ADMIN_EMAIL    ?? 'admin@cobrix.com';
   const password = process.env.SEED_ADMIN_PASSWORD ?? '';
-  const tenantName = process.env.SEED_TENANT_NAME  ?? 'Provired';
-  const tenantSlug = process.env.SEED_TENANT_SLUG  ?? 'provired';
+  const tenantName = process.env.SEED_TENANT_NAME  ?? 'Cobrix';
+  const tenantSlug = process.env.SEED_TENANT_SLUG  ?? 'cobrix';
 
   if (!password || password.length < 8) {
     console.error('❌  SEED_ADMIN_PASSWORD is required and must be at least 8 characters.');

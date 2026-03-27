@@ -1,5 +1,5 @@
 import { Module, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { HealthController } from './health.controller';
@@ -24,11 +24,18 @@ import { CryptoMiddleware } from './modules/crypto/crypto.middleware';
 @Module({
   controllers: [HealthController],
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, load: [envConfig] }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      load: [envConfig],
+      envFilePath: ['../../.env', '.env'],
+    }),
     // Rate limiting: 300 requests per 60s per IP
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }]),
-    BullModule.forRoot({
-      connection: { url: process.env.REDIS_URL ?? 'redis://localhost:6379' },
+    BullModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        connection: { url: config.get<string>('redis.url') },
+      }),
     }),
     AuthModule,
     UsersModule,

@@ -4,7 +4,7 @@ import { useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api-client';
 import Link from 'next/link';
-import { ProViredLogo } from '@/components/ProViredLogo';
+import { CobrixLogo } from '@/components/CobrixLogo';
 import { Eye, EyeOff, ArrowRight, CheckCircle } from 'lucide-react';
 
 function ResetPasswordContent() {
@@ -26,7 +26,7 @@ function ResetPasswordContent() {
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary-500 via-primary-400 to-accent" />
           <div className="px-8 pt-10 pb-8 text-center">
             <div className="flex justify-center mb-6">
-              <ProViredLogo variant="full" size={36} />
+              <CobrixLogo variant="full" size={36} />
             </div>
             <p className="text-danger text-sm mb-4">Enlace inválido o expirado.</p>
             <Link href="/forgot-password" className="btn-primary inline-flex items-center gap-2 text-sm">
@@ -96,7 +96,7 @@ function ResetPasswordContent() {
 
         <div className="px-8 pt-10 pb-8">
           <div className="flex justify-center mb-8">
-            <ProViredLogo variant="full" size={40} />
+            <CobrixLogo variant="full" size={40} />
           </div>
 
           <h1 className="text-2xl font-bold text-text-primary text-center mb-1">
