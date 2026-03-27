@@ -1,6 +1,7 @@
 import { Injectable, NestInterceptor, ExecutionContext, CallHandler } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
+import type { Request } from 'express';
 import { CryptoService } from './crypto.service';
 
 @Injectable()
@@ -9,7 +10,7 @@ export class CryptoInterceptor implements NestInterceptor {
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const req = context.switchToHttp().getRequest<Request>();
-    const clientKey = (req.headers as Record<string, string | undefined>)['x-client-key'];
+    const clientKey = req.headers['x-client-key'] as string | undefined;
 
     // Sin header → respuesta en claro (rutas excluidas o clientes sin crypto)
     if (!clientKey) return next.handle();
