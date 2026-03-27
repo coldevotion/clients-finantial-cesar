@@ -3,6 +3,8 @@ import { ValidationPipe } from "@nestjs/common";
 import { AppModule } from "./app.module";
 import { HttpExceptionFilter } from "./common/filters/http-exception.filter";
 import { ResponseInterceptor } from "./common/interceptors/response.interceptor";
+import { CryptoService } from "./modules/crypto/crypto.service";
+import { CryptoInterceptor } from "./modules/crypto/crypto.interceptor";
 import { prisma } from "@wa/database";
 import { hash } from "bcrypt";
 
@@ -71,7 +73,11 @@ async function bootstrap() {
   );
 
   app.useGlobalFilters(new HttpExceptionFilter());
-  app.useGlobalInterceptors(new ResponseInterceptor());
+
+  // Orden: CryptoInterceptor (exterior) → ResponseInterceptor (interior) → handler
+  // Flujo de respuesta: handler → ResponseInterceptor envuelve en { data } → CryptoInterceptor cifra
+  const cryptoService = app.get(CryptoService);
+  app.useGlobalInterceptors(new CryptoInterceptor(cryptoService), new ResponseInterceptor());
 
   app.enableCors({
     origin: true,

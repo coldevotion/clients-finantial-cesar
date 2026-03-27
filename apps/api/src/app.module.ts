@@ -18,6 +18,8 @@ import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { LogsModule } from './modules/logs/logs.module';
 import { BulkUploadsModule } from './modules/bulk-uploads/bulk-uploads.module';
+import { CryptoModule } from './modules/crypto/crypto.module';
+import { CryptoMiddleware } from './modules/crypto/crypto.middleware';
 
 @Module({
   controllers: [HealthController],
@@ -40,6 +42,7 @@ import { BulkUploadsModule } from './modules/bulk-uploads/bulk-uploads.module';
     AnalyticsModule,
     LogsModule,
     BulkUploadsModule,
+    CryptoModule,
   ],
   providers: [
     // Apply ThrottlerGuard globally
@@ -48,11 +51,18 @@ import { BulkUploadsModule } from './modules/bulk-uploads/bulk-uploads.module';
 })
 export class AppModule {
   configure(consumer: MiddlewareConsumer) {
+    // CryptoMiddleware: descifra req.body en todas las rutas que envíen X-Client-Key
+    consumer
+      .apply(CryptoMiddleware)
+      .forRoutes('*');
+
+    // TenantMiddleware: valida JWT + extrae tenantId/userId (excluye rutas públicas)
     consumer
       .apply(TenantMiddleware)
       .exclude(
         { path: 'auth/(.*)', method: RequestMethod.ALL },
         { path: 'webhooks/(.*)', method: RequestMethod.ALL },
+        { path: 'crypto/(.*)', method: RequestMethod.ALL },
         { path: 'api/health', method: RequestMethod.GET },
       )
       .forRoutes('*');

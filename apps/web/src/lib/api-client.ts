@@ -1,5 +1,15 @@
+import { encryptBody, decryptResponse, resetSession } from './crypto-client';
+import type { EncryptedPayload } from '@wa/types';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 const MOCK_MODE = process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
+
+// Rutas que NO usan cifrado (auth pública, webhooks, health, handshake crypto)
+const PLAIN_PATH_PREFIXES = ['/auth/', '/webhooks/', '/crypto/', '/health'];
+
+function isPlainPath(path: string): boolean {
+  return PLAIN_PATH_PREFIXES.some((prefix) => path.startsWith(prefix));
+}
 
 function getStoredToken(): string | null {
   if (typeof document === 'undefined') return null;
@@ -11,41 +21,73 @@ function getStoredToken(): string | null {
   }
 }
 
-async function request<T>(path: string, options?: RequestInit & { _query?: Record<string, string | undefined> }, isRetry = false): Promise<T> {
-  // Build path with query params
+async function request<T>(
+  path: string,
+  options?: RequestInit & { _query?: Record<string, string | undefined> },
+  isRetry = false,
+): Promise<T> {
+  // Build query string
   let fullPath = path;
   if (options?._query) {
     const params = new URLSearchParams();
-    for (const [k, v] of Object.entries(options._query)) {
+    for (const [k, v] of Object.entries(options?._query ?? {})) {
       if (v !== undefined && v !== '') params.set(k, v);
     }
     const qs = params.toString();
     if (qs) fullPath = `${path}?${qs}`;
   }
 
+  // Mock mode: bypass real network
   if (MOCK_MODE) {
     const { resolveMock } = await import('./mock-data');
     const method = options?.method ?? 'GET';
-    const data = resolveMock(method, path); // pass path without query for mock lookup
+    const data = resolveMock(method, path);
     await new Promise((r) => setTimeout(r, 120));
     return data as T;
   }
 
   const token = getStoredToken();
-
+  const useCrypto = !isPlainPath(path) && typeof crypto !== 'undefined';
+  const method = options?.method ?? 'GET';
   const isFormData = options?.body instanceof FormData;
+  const hasBody = options?.body != null;
+
+  let body = options?.body;
+  const extraHeaders: Record<string, string> = {};
+
+  // ── Cifrar body si corresponde (POST/PUT/PATCH con body JSON) ──────────────
+  if (useCrypto && hasBody && !isFormData) {
+    const raw = typeof body === 'string' ? JSON.parse(body) : body;
+    const { payload, clientPublicKey } = await encryptBody(raw);
+    body = JSON.stringify(payload);
+    extraHeaders['X-Client-Key'] = clientPublicKey;
+  } else if (useCrypto && !isFormData) {
+    // GET / DELETE sin body: igualmente enviamos la clave para que el servidor cifre la respuesta
+    const { clientPublicKey } = await encryptBody(null).catch(() => ({ clientPublicKey: '' }));
+    if (clientPublicKey) extraHeaders['X-Client-Key'] = clientPublicKey;
+  }
 
   const res = await fetch(`${API_URL}/api${fullPath}`, {
     ...options,
+    body,
     headers: {
       ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...extraHeaders,
       ...options?.headers,
     },
   });
 
-  // Access token expired → try refresh once
+  // ── 401: token expirado → refresh y reintentar ─────────────────────────────
   if (res.status === 401 && !isRetry && typeof window !== 'undefined') {
+    const body401 = await res.json().catch(() => ({}));
+
+    // El servidor reinició → keypair ECDH cambió → re-negociar sesión crypto
+    if (body401?.error?.code === 'SESSION_INVALID') {
+      resetSession();
+      return request<T>(path, options, true);
+    }
+
     const { refreshAccessToken } = await import('@/store/auth.store');
     const newToken = await refreshAccessToken();
     if (newToken) return request<T>(path, options, true);
@@ -59,6 +101,15 @@ async function request<T>(path: string, options?: RequestInit & { _query?: Recor
   }
 
   const json = await res.json();
+
+  // ── Descifrar respuesta si viene cifrada ───────────────────────────────────
+  // Respuesta cifrada: { iv: string, data: string }  (EncryptedPayload directo, sin wrapper)
+  // Respuesta plana:   { data: T }  (ResponseInterceptor wrapper)
+  if (useCrypto && json && typeof json.iv === 'string' && typeof json.data === 'string') {
+    const decrypted = await decryptResponse(json as EncryptedPayload) as { data: T };
+    return decrypted.data;
+  }
+
   return json.data as T;
 }
 
