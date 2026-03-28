@@ -3,6 +3,7 @@ import type { EncryptedPayload } from '@wa/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 const MOCK_MODE = process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
+const CRYPTO_DISABLED = process.env.NEXT_PUBLIC_DISABLE_CRYPTO === 'true';
 
 // Rutas que NO usan cifrado (auth pública, webhooks, health, handshake crypto)
 const PLAIN_PATH_PREFIXES = ['/auth/', '/webhooks/', '/crypto/', '/health'];
@@ -57,7 +58,7 @@ async function request<T>(
   }
 
   const token = getStoredToken();
-  const useCrypto = !isPlainPath(path) && isCryptoAvailable();
+  const useCrypto = !CRYPTO_DISABLED && !isPlainPath(path) && isCryptoAvailable();
   const isFormData = options?.body instanceof FormData;
   const hasBody = options?.body != null;
 
