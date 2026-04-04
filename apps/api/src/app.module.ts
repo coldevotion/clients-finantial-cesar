@@ -20,6 +20,7 @@ import { LogsModule } from './modules/logs/logs.module';
 import { BulkUploadsModule } from './modules/bulk-uploads/bulk-uploads.module';
 import { CryptoModule } from './modules/crypto/crypto.module';
 import { CryptoMiddleware } from './modules/crypto/crypto.middleware';
+import { NavModulesModule } from './modules/nav-modules/nav-modules.module';
 
 @Module({
   controllers: [HealthController],
@@ -50,6 +51,7 @@ import { CryptoMiddleware } from './modules/crypto/crypto.middleware';
     LogsModule,
     BulkUploadsModule,
     CryptoModule,
+    NavModulesModule,
   ],
   providers: [
     // Apply ThrottlerGuard globally

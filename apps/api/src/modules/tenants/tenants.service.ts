@@ -2,7 +2,6 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
-  ForbiddenException,
   BadRequestException,
 } from '@nestjs/common';
 import { prisma } from '@wa/database';
@@ -16,6 +15,8 @@ export interface CreateTenantDto {
   email?: string;
   phone?: string;
   notes?: string;
+  moduleIds?: string[];
+  isLimit?: boolean;
   contactLimit?: number;
   omitActive?: boolean;
 }
@@ -28,6 +29,8 @@ export interface UpdateTenantDto {
   email?: string;
   phone?: string;
   notes?: string;
+  moduleIds?: string[];
+  isLimit?: boolean;
   contactLimit?: number;
   omitActive?: boolean;
 }
@@ -52,6 +55,7 @@ export class TenantsService {
       },
       include: {
         _count: { select: { users: true, campaigns: true, contacts: true } },
+        navModules: { include: { navModule: true }, orderBy: { navModule: { order: 'asc' } } },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -64,6 +68,7 @@ export class TenantsService {
       where: { id },
       include: {
         _count: { select: { users: true, campaigns: true, contacts: true } },
+        navModules: { include: { navModule: true }, orderBy: { navModule: { order: 'asc' } } },
       },
     });
     if (!tenant) throw new NotFoundException('Tenant not found');
@@ -82,17 +87,25 @@ export class TenantsService {
     const existing = await prisma.tenant.findUnique({ where: { slug: data.slug } });
     if (existing) throw new ConflictException(`Slug "${data.slug}" already taken`);
 
+    const isLimit = data.isLimit ?? false;
     return prisma.tenant.create({
       data: {
         name: data.name,
         slug: data.slug,
-        plan: data.plan ?? 'STARTER',
+        plan: data.plan ?? 'ENTERPRISE',
         document: data.document,
         email: data.email,
         phone: data.phone,
         notes: data.notes,
-        contactLimit: data.contactLimit ?? 1000,
-        omitActive: data.omitActive ?? true,
+        isLimit,
+        contactLimit: isLimit ? (data.contactLimit ?? 1000) : 0,
+        omitActive: isLimit ? (data.omitActive ?? true) : true,
+        ...(data.moduleIds?.length
+          ? { navModules: { create: data.moduleIds.map(navModuleId => ({ navModuleId })) } }
+          : {}),
+      },
+      include: {
+        navModules: { include: { navModule: true }, orderBy: { navModule: { order: 'asc' } } },
       },
     });
   }
@@ -101,7 +114,24 @@ export class TenantsService {
 
   async update(id: string, data: UpdateTenantDto) {
     await this.findById(id);
-    return prisma.tenant.update({ where: { id }, data });
+    const { moduleIds, ...rest } = data;
+    return prisma.tenant.update({
+      where: { id },
+      data: {
+        ...rest,
+        ...(moduleIds !== undefined
+          ? {
+              navModules: {
+                deleteMany: {},
+                create: moduleIds.map(navModuleId => ({ navModuleId })),
+              },
+            }
+          : {}),
+      },
+      include: {
+        navModules: { include: { navModule: true }, orderBy: { navModule: { order: 'asc' } } },
+      },
+    });
   }
 
   // ─── Admin: suspend / activate ───────────────────────────────────────────

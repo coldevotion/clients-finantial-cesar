@@ -16,6 +16,22 @@ import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
+const INITIAL_MODULES = [
+  // Módulos de tenant (isSuperAdmin: false)
+  { key: '/',              label: 'Dashboard',      icon: 'LayoutDashboard', order: 0, isSuperAdmin: false },
+  { key: '/templates',     label: 'Plantillas HSM', icon: 'FileText',        order: 1, isSuperAdmin: false },
+  { key: '/flows',         label: 'Flujos',         icon: 'Workflow',        order: 2, isSuperAdmin: false },
+  { key: '/campaigns',     label: 'Campañas',       icon: 'Megaphone',       order: 3, isSuperAdmin: false },
+  { key: '/contacts',      label: 'Contactos',      icon: 'Users',           order: 4, isSuperAdmin: false },
+  { key: '/uploads',       label: 'Cargue masivo',  icon: 'Upload',          order: 5, isSuperAdmin: false },
+  { key: '/conversations', label: 'Conversaciones', icon: 'MessageSquare',   order: 6, isSuperAdmin: false },
+  { key: '/reports',       label: 'Reportes',       icon: 'PieChart',        order: 7, isSuperAdmin: false },
+  // Módulos de administración (isSuperAdmin: true — sección Administración)
+  { key: '/admin/clients', label: 'Clientes',       icon: 'Building2',       order: 0, isSuperAdmin: true },
+  { key: '/admin/users',   label: 'Usuarios',       icon: 'UsersRound',      order: 1, isSuperAdmin: true },
+  { key: '/admin/system',  label: 'Sistema y Logs', icon: 'Activity',        order: 2, isSuperAdmin: true },
+];
+
 async function main() {
   const email    = process.env.SEED_ADMIN_EMAIL    ?? 'admin@cobrix.com';
   const password = process.env.SEED_ADMIN_PASSWORD ?? '';
@@ -61,6 +77,16 @@ async function main() {
   } else {
     console.log(`ℹ️   User already exists: ${user.email} (${user.id})`);
   }
+
+  // ── 3. Seed nav modules ────────────────────────────────────────────────────
+  for (const mod of INITIAL_MODULES) {
+    await prisma.navModule.upsert({
+      where: { key: mod.key },
+      update: { label: mod.label, icon: mod.icon, order: mod.order },
+      create: mod,
+    });
+  }
+  console.log(`✅  Nav modules seeded: ${INITIAL_MODULES.length} modules`);
 
   console.log('\n🚀  Seed complete.');
 }

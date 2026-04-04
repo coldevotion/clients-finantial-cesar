@@ -54,6 +54,8 @@ export class TenantsController {
       email?: string;
       phone?: string;
       notes?: string;
+      moduleIds?: string[];
+      isLimit?: boolean;
       contactLimit?: number;
       omitActive?: boolean;
     },
@@ -76,6 +78,8 @@ export class TenantsController {
       email?: string;
       phone?: string;
       notes?: string;
+      moduleIds?: string[];
+      isLimit?: boolean;
       contactLimit?: number;
       omitActive?: boolean;
     },

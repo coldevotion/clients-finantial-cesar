@@ -6,8 +6,21 @@ import { api } from '@/lib/api-client';
 import {
   Building2, Plus, Search, Pencil, Trash2,
   CheckCircle2, XCircle, Phone, Mail, Users,
-  ShieldCheck, ShieldOff, BarChart2, Layers,
+  ShieldCheck, ShieldOff, BarChart2, Layers, ChevronRight, ChevronLeft,
 } from 'lucide-react';
+
+interface NavModule {
+  id: string;
+  key: string;
+  label: string;
+  icon: string;
+  order: number;
+  isSuperAdmin: boolean;
+}
+
+interface TenantModule {
+  navModule: NavModule;
+}
 
 interface Tenant {
   id: string;
@@ -19,8 +32,10 @@ interface Tenant {
   email?: string;
   phone?: string;
   notes?: string;
+  isLimit: boolean;
   contactLimit: number;
   omitActive: boolean;
+  navModules: TenantModule[];
   createdAt: string;
   _count?: { users: number; campaigns: number; contacts: number };
 }
@@ -33,9 +48,10 @@ const PLAN_COLORS = {
 };
 
 const EMPTY_FORM = {
-  name: '', slug: '', plan: 'STARTER' as 'STARTER' | 'GROWTH' | 'ENTERPRISE',
+  name: '', slug: '', plan: 'ENTERPRISE',
   document: '', email: '', phone: '',
-  contactLimit: 1000, omitActive: true, notes: '',
+  isLimit: false, contactLimit: 1000, omitActive: true, notes: '',
+  moduleIds: [] as string[],
 };
 
 export default function AdminClientsPage() {
@@ -43,12 +59,18 @@ export default function AdminClientsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [showForm, setShowForm] = useState(false);
+  const [step, setStep] = useState(1);
   const [editing, setEditing] = useState<Tenant | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
 
   const { data: tenants = [], isLoading } = useQuery<Tenant[]>({
     queryKey: ['tenants', statusFilter],
     queryFn: () => api.get<Tenant[]>('/tenants', { status: statusFilter || undefined }),
+  });
+
+  const { data: allModules = [] } = useQuery<NavModule[]>({
+    queryKey: ['nav-modules'],
+    queryFn: () => api.get<NavModule[]>('/nav-modules'),
   });
 
   const createMutation = useMutation({
@@ -75,7 +97,8 @@ export default function AdminClientsPage() {
 
   function openNew() {
     setEditing(null);
-    setForm(EMPTY_FORM);
+    setForm({ ...EMPTY_FORM, moduleIds: allModules.filter(m => !m.isSuperAdmin).map(m => m.id) });
+    setStep(1);
     setShowForm(true);
   }
 
@@ -88,19 +111,30 @@ export default function AdminClientsPage() {
       document: t.document ?? '',
       email: t.email ?? '',
       phone: t.phone ?? '',
+      isLimit: t.isLimit,
       contactLimit: t.contactLimit,
       omitActive: t.omitActive,
       notes: t.notes ?? '',
+      moduleIds: t.navModules.map(tm => tm.navModule.id),
     });
+    setStep(1);
     setShowForm(true);
   }
 
-  function closeForm() { setShowForm(false); setEditing(null); setForm(EMPTY_FORM); }
+  function closeForm() { setShowForm(false); setEditing(null); setForm(EMPTY_FORM); setStep(1); }
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  function handleSubmit() {
     if (editing) updateMutation.mutate({ id: editing.id, data: form });
     else createMutation.mutate(form);
+  }
+
+  function toggleModule(id: string) {
+    setForm(f => ({
+      ...f,
+      moduleIds: f.moduleIds.includes(id)
+        ? f.moduleIds.filter(m => m !== id)
+        : [...f.moduleIds, id],
+    }));
   }
 
   const filtered = tenants.filter(t =>
@@ -211,12 +245,14 @@ export default function AdminClientsPage() {
                   </td>
                   <td className="px-4 py-3 space-y-1">
                     <div className="flex items-center gap-1 text-xs text-text-secondary">
-                      <Layers size={10} /> {t.contactLimit.toLocaleString()} contactos
+                      <Layers size={10} /> {t.isLimit ? `${t.contactLimit.toLocaleString()} contactos` : 'Sin límite'}
                     </div>
-                    {t.omitActive ? (
-                      <span className="flex items-center gap-1 text-[10px] text-amber-600"><ShieldCheck size={10} /> Omite activos</span>
-                    ) : (
-                      <span className="flex items-center gap-1 text-[10px] text-slate-400"><ShieldOff size={10} /> Sin omisión</span>
+                    {t.isLimit && (
+                      t.omitActive ? (
+                        <span className="flex items-center gap-1 text-[10px] text-amber-600"><ShieldCheck size={10} /> Omite activos</span>
+                      ) : (
+                        <span className="flex items-center gap-1 text-[10px] text-slate-400"><ShieldOff size={10} /> Sin omisión</span>
+                      )
                     )}
                   </td>
                   <td className="px-4 py-3">
@@ -261,87 +297,216 @@ export default function AdminClientsPage() {
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+
+            {/* Header */}
             <div className="px-6 py-4 border-b border-border flex items-center justify-between sticky top-0 bg-white z-10">
-              <h2 className="font-bold text-text-primary text-lg">
-                {editing ? 'Editar cliente' : 'Nuevo cliente'}
-              </h2>
+              <div>
+                <h2 className="font-bold text-text-primary text-lg">
+                  {editing ? 'Editar cliente' : 'Nuevo cliente'}
+                </h2>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  {[1, 2].map(s => (
+                    <span
+                      key={s}
+                      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full transition-colors ${
+                        step === s
+                          ? 'bg-primary-500 text-white'
+                          : s < step
+                          ? 'bg-emerald-100 text-emerald-600'
+                          : 'bg-surface-muted text-text-muted'
+                      }`}
+                    >
+                      {s === 1 ? 'Datos' : 'Módulos'}
+                    </span>
+                  ))}
+                </div>
+              </div>
               <button onClick={closeForm} className="text-text-muted hover:text-text-primary transition-colors">✕</button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
-                  <label className="block text-xs font-semibold text-text-secondary mb-1">Nombre *</label>
-                  <input required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="input" placeholder="Ej: Banco Nacional SA" />
-                </div>
+            <div className="p-6 space-y-4">
 
+              {/* ── Paso 1: Datos generales ── */}
+              {step === 1 && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2">
+                    <label className="block text-xs font-semibold text-text-secondary mb-1">Nombre *</label>
+                    <input required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="input" placeholder="Ej: Banco Nacional SA" />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-text-secondary mb-1">Slug * <span className="font-normal text-text-muted">(URL)</span></label>
+                    <input
+                      required
+                      disabled={!!editing}
+                      value={form.slug}
+                      onChange={e => setForm(f => ({ ...f, slug: e.target.value.toLowerCase().replace(/\s+/g, '-') }))}
+                      className="input disabled:opacity-50 disabled:bg-surface-muted"
+                      placeholder="banco-nacional"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-text-secondary mb-1">Plan</label>
+                    <select value={form.plan} onChange={e => setForm(f => ({ ...f, plan: e.target.value as any }))} className="input" disabled>
+                      <option value="STARTER">Starter</option>
+                      <option value="GROWTH">Growth</option>
+                      <option value="ENTERPRISE">Enterprise</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-text-secondary mb-1">NIT / Documento</label>
+                    <input value={form.document} onChange={e => setForm(f => ({ ...f, document: e.target.value }))} className="input" placeholder="900.123.456-1" />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-text-secondary mb-1">Teléfono</label>
+                    <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} className="input" placeholder="+57160012345" />
+                  </div>
+
+                  <div className="col-span-2">
+                    <label className="block text-xs font-semibold text-text-secondary mb-1">Email de contacto</label>
+                    <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} className="input" placeholder="ops@empresa.com" />
+                  </div>
+
+                  <div className="col-span-2 flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      id="isLimit"
+                      checked={form.isLimit}
+                      onChange={e => setForm(f => ({ ...f, isLimit: e.target.checked, contactLimit: e.target.checked ? 1000 : 0 }))}
+                      className="w-4 h-4 accent-primary-500"
+                    />
+                    <label htmlFor="isLimit" className="text-sm text-text-secondary leading-snug">
+                      Aplicar límite de interacciones por campaña
+                    </label>
+                  </div>
+
+                  {form.isLimit && (
+                    <>
+                      <div>
+                        <label className="block text-xs font-semibold text-text-secondary mb-1">Límite contactos / campaña *</label>
+                        <input
+                          required
+                          type="number"
+                          min={1}
+                          value={form.contactLimit}
+                          onChange={e => setForm(f => ({ ...f, contactLimit: Number(e.target.value) }))}
+                          className="input"
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-3 pt-5">
+                        <input
+                          type="checkbox"
+                          id="omitActive"
+                          checked={form.omitActive}
+                          onChange={e => setForm(f => ({ ...f, omitActive: e.target.checked }))}
+                          className="w-4 h-4 accent-primary-500"
+                        />
+                        <label htmlFor="omitActive" className="text-sm text-text-secondary leading-snug">
+                          Omitir contactos con ventana WA activa (24h)
+                        </label>
+                      </div>
+                    </>
+                  )}
+
+                  <div className="col-span-2">
+                    <label className="block text-xs font-semibold text-text-secondary mb-1">Notas internas</label>
+                    <textarea rows={2} value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} className="input resize-none" placeholder="Notas internas…" />
+                  </div>
+                </div>
+              )}
+
+              {/* ── Paso 2: Módulos ── */}
+              {step === 2 && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-xs text-text-muted">
+                      Selecciona los módulos que podrá usar el administrador del cliente.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                      const tenantModules = allModules.filter(m => !m.isSuperAdmin);
+                      setForm(f => ({
+                        ...f,
+                        moduleIds: f.moduleIds.length === tenantModules.length ? [] : tenantModules.map(m => m.id),
+                      }));
+                    }}
+                      className="text-[11px] text-primary-500 hover:underline"
+                    >
+                      {form.moduleIds.length === allModules.filter(m => !m.isSuperAdmin).length ? 'Desmarcar todos' : 'Seleccionar todos'}
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    {allModules.filter(m => !m.isSuperAdmin).map(mod => {
+                      const checked = form.moduleIds.includes(mod.id);
+                      return (
+                        <button
+                          key={mod.id}
+                          type="button"
+                          onClick={() => toggleModule(mod.id)}
+                          className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg border text-sm font-medium transition-all text-left ${
+                            checked
+                              ? 'border-primary-400 bg-primary-50 text-primary-700'
+                              : 'border-border bg-white text-text-secondary hover:border-primary-200'
+                          }`}
+                        >
+                          <span className={`w-4 h-4 rounded flex-shrink-0 border-2 flex items-center justify-center transition-colors ${
+                            checked ? 'border-primary-500 bg-primary-500' : 'border-slate-300'
+                          }`}>
+                            {checked && (
+                              <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 10 8">
+                                <path d="M1 4l3 3 5-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            )}
+                          </span>
+                          <span className="truncate">{mod.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {form.moduleIds.length === 0 && (
+                    <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                      Sin módulos seleccionados el cliente no podrá navegar por la plataforma.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Acciones */}
+              <div className="flex justify-between gap-3 pt-2">
                 <div>
-                  <label className="block text-xs font-semibold text-text-secondary mb-1">Slug * <span className="font-normal text-text-muted">(URL)</span></label>
-                  <input
-                    required
-                    disabled={!!editing}
-                    value={form.slug}
-                    onChange={e => setForm(f => ({ ...f, slug: e.target.value.toLowerCase().replace(/\s+/g, '-') }))}
-                    className="input disabled:opacity-50 disabled:bg-surface-muted"
-                    placeholder="banco-nacional"
-                  />
+                  {step === 2 && (
+                    <button type="button" onClick={() => setStep(1)} className="btn-secondary flex items-center gap-1">
+                      <ChevronLeft size={14} /> Atrás
+                    </button>
+                  )}
                 </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-text-secondary mb-1">Plan</label>
-                  <select value={form.plan} onChange={e => setForm(f => ({ ...f, plan: e.target.value as any }))} className="input">
-                    <option value="STARTER">Starter</option>
-                    <option value="GROWTH">Growth</option>
-                    <option value="ENTERPRISE">Enterprise</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-text-secondary mb-1">NIT / Documento</label>
-                  <input value={form.document} onChange={e => setForm(f => ({ ...f, document: e.target.value }))} className="input" placeholder="900.123.456-1" />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-text-secondary mb-1">Teléfono</label>
-                  <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} className="input" placeholder="+57160012345" />
-                </div>
-
-                <div className="col-span-2">
-                  <label className="block text-xs font-semibold text-text-secondary mb-1">Email de contacto</label>
-                  <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} className="input" placeholder="ops@empresa.com" />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-text-secondary mb-1">Límite contactos / campaña</label>
-                  <input type="number" min={1} value={form.contactLimit} onChange={e => setForm(f => ({ ...f, contactLimit: Number(e.target.value) }))} className="input" />
-                </div>
-
-                <div className="flex items-center gap-3 pt-5">
-                  <input
-                    type="checkbox"
-                    id="omitActive"
-                    checked={form.omitActive}
-                    onChange={e => setForm(f => ({ ...f, omitActive: e.target.checked }))}
-                    className="w-4 h-4 accent-primary-500"
-                  />
-                  <label htmlFor="omitActive" className="text-sm text-text-secondary leading-snug">
-                    Omitir contactos con ventana WA activa (24h)
-                  </label>
-                </div>
-
-                <div className="col-span-2">
-                  <label className="block text-xs font-semibold text-text-secondary mb-1">Notas internas</label>
-                  <textarea rows={2} value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} className="input resize-none" placeholder="Notas internas…" />
+                <div className="flex gap-3">
+                  <button type="button" onClick={closeForm} className="btn-secondary">Cancelar</button>
+                  {step === 1 ? (
+                    <button
+                      type="button"
+                      onClick={() => setStep(2)}
+                      disabled={!form.name || !form.slug}
+                      className="btn-primary flex items-center gap-1 disabled:opacity-50"
+                    >
+                      Módulos <ChevronRight size={14} />
+                    </button>
+                  ) : (
+                    <button type="button" onClick={handleSubmit} disabled={isSaving} className="btn-primary">
+                      {isSaving ? 'Guardando…' : editing ? 'Guardar cambios' : 'Crear cliente'}
+                    </button>
+                  )}
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 pt-2">
-                <button type="button" onClick={closeForm} className="btn-secondary">Cancelar</button>
-                <button type="submit" disabled={isSaving} className="btn-primary">
-                  {isSaving ? 'Guardando…' : editing ? 'Guardar cambios' : 'Crear cliente'}
-                </button>
-              </div>
-            </form>
+            </div>
           </div>
         </div>
       )}

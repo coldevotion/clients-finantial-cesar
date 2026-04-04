@@ -189,13 +189,15 @@ model Tenant {
   phone        String?                       // teléfono de contacto
   notes        String?                       // notas internas
   // Configuración de envíos
-  contactLimit Int          @default(1000)   // límite de contactos por campaña
+  isLimit      Boolean      @default(false)  // si true, aplica límite de contactos por campaña
+  contactLimit Int          @default(0)      // límite de contactos por campaña (0 = sin límite)
   omitActive   Boolean      @default(true)   // omitir contactos con ventana WA activa (24h)
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
   users         User[]
   channels      TenantChannel[]
+  navModules    TenantModule[]
   templates     Template[]
   flows         Flow[]
   campaigns     Campaign[]
@@ -208,6 +210,34 @@ model Tenant {
   @@index([slug])
   @@index([status])
   @@map("tenants")
+}
+
+// ─── NAV MODULES ─────────────────────────────────────────────────────────────
+// Catálogo de módulos disponibles en la plataforma. El SUPER_ADMIN elige
+// cuáles se habilitan por tenant.
+
+model NavModule {
+  id            String @id @default(uuid())
+  key           String @unique  // href: '/', '/templates', '/admin/clients', etc.
+  label         String          // 'Dashboard', 'Plantillas HSM', etc.
+  icon          String          // nombre del componente lucide-react
+  order         Int    @default(0)
+  isSuperAdmin  Boolean @default(false) // true = sección Administración (solo SUPER_ADMIN)
+
+  tenants TenantModule[]
+
+  @@map("nav_modules")
+}
+
+model TenantModule {
+  tenantId    String
+  navModuleId String
+
+  tenant    Tenant    @relation(fields: [tenantId],    references: [id], onDelete: Cascade)
+  navModule NavModule @relation(fields: [navModuleId], references: [id], onDelete: Cascade)
+
+  @@id([tenantId, navModuleId])
+  @@map("tenant_modules")
 }
 
 model TenantChannel {
